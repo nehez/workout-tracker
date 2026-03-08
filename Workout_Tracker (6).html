@@ -185,6 +185,25 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 #prog-select{flex:1;background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.06em;padding:6px 10px;border-radius:4px;appearance:none;-webkit-appearance:none;cursor:pointer;text-transform:uppercase}
 #prog-select:focus{outline:none;border-color:var(--accent)}
 #prog-name-badge{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:.12em;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px;white-space:nowrap;flex-shrink:0}
+#prog-upload-btn{background:none;border:1px solid var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;padding:4px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:border-color .2s,color .2s}
+#prog-upload-btn:hover{border-color:var(--accent);color:var(--accent)}
+#prog-upload-input{display:none}
+#prog-manage-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:300;align-items:center;justify-content:center}
+#prog-manage-overlay.active{display:flex}
+#prog-manage-box{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:24px;width:min(92vw,420px);max-height:80vh;overflow-y:auto}
+#prog-manage-box h2{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;letter-spacing:.15em;color:var(--accent);margin:0 0 16px 0;text-transform:uppercase}
+.custom-prog-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.custom-prog-row:last-child{border-bottom:none}
+.custom-prog-info{flex:1;min-width:0}
+.custom-prog-info .cpname{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--text);letter-spacing:.06em;text-transform:uppercase}
+.custom-prog-info .cpdesc{font-size:11px;color:var(--muted);margin-top:2px}
+.custom-prog-info .cpweeks{font-size:11px;color:var(--accent);margin-top:1px}
+.cp-delete-btn{background:none;border:1px solid #c0392b;color:#c0392b;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:.08em;padding:4px 10px;border-radius:4px;cursor:pointer;flex-shrink:0}
+.cp-delete-btn:hover{background:#c0392b;color:#fff}
+#prog-manage-close{margin-top:18px;width:100%;background:var(--border);border:none;color:var(--text);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:.12em;padding:10px;border-radius:4px;cursor:pointer}
+#prog-manage-close:hover{background:var(--accent);color:var(--bg)}
+.prog-manage-empty{color:var(--muted);font-size:13px;text-align:center;padding:20px 0}
+#prog-select optgroup{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--muted);background:var(--card)}
 </style>
 </head>
 <body>
@@ -192,12 +211,26 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="prog-bar">
   <span id="prog-label">PROGRAM</span>
   <select id="prog-select">
-    <option value="hw2_jmod">HW2 — J MOD</option>
-    <option value="hw2_orig">HW2 — ORIGINAL</option>
-    <option value="hw1">HW1 — ORIGINAL</option>
-    <option value="build_new">BUILD</option>
+    <optgroup label="─── BUILT-IN ───">
+      <option value="hw2_jmod">HW2 — J MOD</option>
+      <option value="hw2_orig">HW2 — ORIGINAL</option>
+      <option value="hw1">HW1 — ORIGINAL</option>
+      <option value="build_new">BUILD</option>
+    </optgroup>
   </select>
   <span id="prog-name-badge">HW2 — J MOD</span>
+  <button id="prog-upload-btn" title="Upload a custom program JSON file">+ UPLOAD</button>
+  <button id="prog-manage-btn" title="Manage custom programs" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;padding:4px 8px;border-radius:4px;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:border-color .2s,color .2s">MANAGE</button>
+  <input type="file" id="prog-upload-input" accept=".json,application/json">
+</div>
+
+<!-- Manage custom programs overlay -->
+<div id="prog-manage-overlay">
+  <div id="prog-manage-box">
+    <h2>My Programs</h2>
+    <div id="prog-manage-list"></div>
+    <button id="prog-manage-close">CLOSE</button>
+  </div>
 </div>
 <div id="topbar">
   <div id="topbar-title">WORKOUT TRACKER</div>
@@ -345,6 +378,158 @@ function ck(w,d,si,ei){return w+'-'+d+'-'+si+'-'+ei;}
 function isChecked(s,w,d,si,ei){return !!s[ck(w,d,si,ei)];}
 function setCheck(s,w,d,si,ei,v){var k=ck(w,d,si,ei);if(v)s[k]=1;else delete s[k];}
 
+// ── CUSTOM PROGRAMS ───────────────────────────────────────────────────────
+var CUSTOM_PROGS_KEY = 'hw2_custom_programs';
+
+function loadCustomProgs(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOM_PROGS_KEY)||'{}'); }catch(e){ return {}; }
+}
+function saveCustomProgs(obj){
+  try{ localStorage.setItem(CUSTOM_PROGS_KEY, JSON.stringify(obj)); }catch(e){}
+}
+
+function validateProgJSON(obj){
+  if(!obj || typeof obj !== 'object') return 'File is not a valid JSON object.';
+  if(!obj.id || typeof obj.id !== 'string' || !obj.id.trim()) return 'Missing or empty "id" field.';
+  if(/[\s\/\\'"]+/.test(obj.id)) return '"id" must not contain spaces or special characters. Use underscores.';
+  if(!obj.name || typeof obj.name !== 'string') return 'Missing or empty "name" field.';
+  if(!obj.desc || typeof obj.desc !== 'string') return 'Missing or empty "desc" field.';
+  if(!Array.isArray(obj.weeks) || obj.weeks.length === 0) return '"weeks" must be a non-empty array.';
+  for(var wi=0; wi<obj.weeks.length; wi++){
+    var wk = obj.weeks[wi];
+    if(!wk || typeof wk !== 'object') return 'Week '+(wi+1)+' is not a valid object.';
+    if(typeof wk.week !== 'number') return 'Week '+(wi+1)+' missing numeric "week" field.';
+    if(!Array.isArray(wk.days) || wk.days.length === 0) return 'Week '+(wi+1)+' has no days array.';
+    for(var di=0; di<wk.days.length; di++){
+      var day = wk.days[di];
+      if(!day || typeof day !== 'object') return 'Week '+(wi+1)+' day '+(di+1)+' is not valid.';
+      if(!day.label || typeof day.label !== 'string') return 'Week '+(wi+1)+' day '+(di+1)+' missing "label".';
+      if(!Array.isArray(day.sections)) return 'Week '+(wi+1)+' day '+(di+1)+' missing "sections" array.';
+    }
+  }
+  return null; // null = valid
+}
+
+function rebuildProgSelect(){
+  var sel = document.getElementById('prog-select');
+  if(!sel) return;
+  // Clear all optgroups except built-in (first one)
+  while(sel.children.length > 1) sel.removeChild(sel.lastChild);
+  var customs = loadCustomProgs();
+  var keys = Object.keys(customs);
+  if(keys.length > 0){
+    var grp = document.createElement('optgroup');
+    grp.label = '─── MY PROGRAMS ───';
+    keys.forEach(function(id){
+      var opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = customs[id].name.toUpperCase();
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  }
+  sel.value = curProgId;
+}
+
+function uploadProgram(file){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var obj;
+    try{ obj = JSON.parse(e.target.result); }
+    catch(err){ alert('Invalid JSON file. Please check the file and try again.\n\n'+err.message); return; }
+    var err = validateProgJSON(obj);
+    if(err){ alert('Program file has an error:\n\n'+err+'\n\nPlease fix and try again.'); return; }
+    // Check for built-in id collision
+    var builtins = ['hw2_jmod','hw2_orig','hw1','build_orig','build_new'];
+    if(builtins.indexOf(obj.id) !== -1){
+      alert('The id "'+obj.id+'" is reserved for a built-in program. Please change the id in your JSON file.');
+      return;
+    }
+    var customs = loadCustomProgs();
+    var isUpdate = !!customs[obj.id];
+    customs[obj.id] = { name: obj.name, desc: obj.desc, weeks: obj.weeks };
+    saveCustomProgs(customs);
+    // Also load into PROGRAMS and PROGRAM_META live
+    PROGRAMS[obj.id] = obj.weeks;
+    PROGRAM_META[obj.id] = { name: obj.name, desc: obj.desc };
+    rebuildProgSelect();
+    var msg = isUpdate
+      ? 'Program "'+obj.name+'" updated successfully.'
+      : 'Program "'+obj.name+'" loaded successfully.\n\nIt now appears in the program selector under MY PROGRAMS.';
+    alert(msg);
+  };
+  reader.readAsText(file);
+}
+
+function renderManageOverlay(){
+  var list = document.getElementById('prog-manage-list');
+  if(!list) return;
+  var customs = loadCustomProgs();
+  var keys = Object.keys(customs);
+  if(keys.length === 0){
+    list.innerHTML = '<div class="prog-manage-empty">No custom programs uploaded yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  keys.forEach(function(id){
+    var prog = customs[id];
+    var row = document.createElement('div');
+    row.className = 'custom-prog-row';
+    row.innerHTML =
+      '<div class="custom-prog-info">'
+      +'<div class="cpname">'+prog.name+'</div>'
+      +'<div class="cpdesc">'+prog.desc+'</div>'
+      +'<div class="cpweeks">'+prog.weeks.length+' week'+(prog.weeks.length!==1?'s':'')+'</div>'
+      +'</div>'
+      +'<button class="cp-delete-btn" data-id="'+id+'">DELETE</button>';
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.cp-delete-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.dataset.id;
+      var meta = PROGRAM_META[id];
+      var name = meta ? meta.name : id;
+      if(!confirm('Delete "'+name+'"?\n\nThis cannot be undone. Your progress data for this program will also be removed.')) return;
+      var customs = loadCustomProgs();
+      delete customs[id];
+      saveCustomProgs(customs);
+      delete PROGRAMS[id];
+      delete PROGRAM_META[id];
+      // Clear associated localStorage data
+      ['hw2_checks','hw2_skips','hw2_notes','hw2_custom'].forEach(function(base){
+        try{ localStorage.removeItem(base+'_'+id); }catch(e){}
+      });
+      // If deleted program was active, switch to default
+      if(curProgId === id){
+        curProgId = 'hw2_jmod';
+        try{ localStorage.setItem('hw2_prog_id','hw2_jmod'); }catch(e){}
+        PROGRAM = PROGRAMS[curProgId];
+        STORAGE_KEY = 'hw2_checks_'+curProgId;
+        SKIP_KEY    = 'hw2_skips_'+curProgId;
+        NOTE_KEY    = 'hw2_notes_'+curProgId;
+        CUSTOM_KEY  = 'hw2_custom_'+curProgId;
+        curWeek = 0; curDay = 0;
+        wtReset();
+        updateProgBadge();
+        renderTabs();
+        renderDay();
+      }
+      rebuildProgSelect();
+      renderManageOverlay();
+    });
+  });
+}
+
+// Load saved custom programs into PROGRAMS/PROGRAM_META on startup
+(function(){
+  var customs = loadCustomProgs();
+  Object.keys(customs).forEach(function(id){
+    var p = customs[id];
+    PROGRAMS[id] = p.weeks;
+    PROGRAM_META[id] = { name: p.name, desc: p.desc };
+  });
+})();
+
 // NAV
 var curWeek=0, curDay=0;
 
@@ -356,6 +541,8 @@ function ytURL(name){
 }
 
 // RENDER
+var PHASE_ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+function phaseName(n){ return 'PHASE '+(PHASE_ROMAN[n-1]||n); }
 var DAY_SHORT=['MON','TUE','WED','THU','FRI','SAT','SUN'];
 
 function renderTabs(){
@@ -382,7 +569,7 @@ function updateProgress(){
   }
   document.getElementById('progress-fill').style.width=(total?Math.round(done/total*100):0)+'%';
   document.getElementById('week-label').textContent='WEEK '+(curWeek+1);
-  document.getElementById('phase-badge').textContent=['PHASE I','PHASE II','PHASE III'][PROGRAM[curWeek].phase-1];
+  document.getElementById('phase-badge').textContent=phaseName(PROGRAM[curWeek].phase||1);
 }
 
 // ACTIONS
@@ -408,7 +595,7 @@ function checkAll(){
 }
 
 function setDay(di){curDay=di;renderTabs();renderDay();}
-function changeWeek(dir){wtReset();var nw=curWeek+dir;if(nw<0||nw>11)return;curWeek=nw;curDay=0;renderTabs();renderDay();}
+function changeWeek(dir){wtReset();var nw=curWeek+dir;if(nw<0||nw>=PROGRAM.length)return;curWeek=nw;curDay=0;renderTabs();renderDay();}
 
 // CONFIRM
 var confirmTarget=null;
@@ -465,7 +652,7 @@ function finishWorkout(){
   if(PROGRAM[curWeek].days[curDay] && PROGRAM[curWeek].days[curDay].rest){
     document.getElementById('cel-icon').textContent='💤';
     document.getElementById('cel-sub').textContent='REST DAY DONE. RECOVERY IS TRAINING.';
-    document.getElementById('cel-stats').innerHTML='<div class="stat-row"><span class="stat-label">Week</span><span class="stat-val">'+(curWeek+1)+' of 12</span></div><div class="stat-row"><span class="stat-label">Phase</span><span class="stat-val">'+['PHASE I','PHASE II','PHASE III'][PROGRAM[curWeek].phase-1]+'</span></div><div class="stat-row"><span class="stat-label">Day</span><span class="stat-val">REST + RECOVERY</span></div>'+(wtFinalTime!=='0:00'?'<div class="stat-row"><span class="stat-label">Time</span><span class="stat-val">'+wtFinalTime+'</span></div>':'');
+    document.getElementById('cel-stats').innerHTML='<div class="stat-row"><span class="stat-label">Week</span><span class="stat-val">'+(curWeek+1)+' of '+PROGRAM.length+'</span></div><div class="stat-row"><span class="stat-label">Phase</span><span class="stat-val">'+phaseName(PROGRAM[curWeek].phase||1)+'</span></div><div class="stat-row"><span class="stat-label">Day</span><span class="stat-val">REST + RECOVERY</span></div>'+(wtFinalTime!=='0:00'?'<div class="stat-row"><span class="stat-label">Time</span><span class="stat-val">'+wtFinalTime+'</span></div>':'');
     document.getElementById('celebrate-overlay').classList.add('show');
     launchConfetti();fanfare();
     return;
@@ -492,8 +679,8 @@ function finishWorkout(){
   document.getElementById('cel-icon').textContent=DAY_EMOJI[curDay]||'🏆';
   document.getElementById('cel-sub').textContent=DAY_MSG[curDay]||'WORKOUT COMPLETE.';
   document.getElementById('cel-stats').innerHTML=
-    '<div class="stat-row"><span class="stat-label">Week</span><span class="stat-val">'+(curWeek+1)+' of 12</span></div>'+
-    '<div class="stat-row"><span class="stat-label">Phase</span><span class="stat-val">'+['PHASE I','PHASE II','PHASE III'][week.phase-1]+'</span></div>'+
+    '<div class="stat-row"><span class="stat-label">Week</span><span class="stat-val">'+(curWeek+1)+' of '+PROGRAM.length+'</span></div>'+
+    '<div class="stat-row"><span class="stat-label">Phase</span><span class="stat-val">'+phaseName(week.phase||1)+'</span></div>'+
     '<div class="stat-row"><span class="stat-label">Exercises today</span><span class="stat-val">'+todayTotal+'</span></div>'+
     '<div class="stat-row"><span class="stat-label">Week progress</span><span class="stat-val">'+Math.round(wkDone/wkTotal*100)+'%</span></div>'+
     (wtFinalTime!=='0:00'?'<div class="stat-row"><span class="stat-label">Time</span><span class="stat-val">'+wtFinalTime+'</span></div>':'');
@@ -1135,6 +1322,26 @@ function bindStatic(){
   document.addEventListener('click', function(e){
     if(!e.target.closest('#lp-menu')) hideLPMenu();
   });
+  // Manage overlay button
+  document.getElementById('prog-manage-btn').addEventListener('click', function(){
+    renderManageOverlay();
+    document.getElementById('prog-manage-overlay').classList.add('active');
+  });
+  // Upload program button
+  document.getElementById('prog-upload-btn').addEventListener('click', function(){
+    document.getElementById('prog-upload-input').click();
+  });
+  document.getElementById('prog-upload-input').addEventListener('change', function(e){
+    var file = e.target.files && e.target.files[0];
+    if(file) uploadProgram(file);
+    this.value = ''; // reset so same file can be re-uploaded if needed
+  });
+  document.getElementById('prog-manage-close').addEventListener('click', function(){
+    document.getElementById('prog-manage-overlay').classList.remove('active');
+  });
+  document.getElementById('prog-manage-overlay').addEventListener('click', function(e){
+    if(e.target === this) this.classList.remove('active');
+  });
 }
 
 // Day tabs delegation
@@ -1167,6 +1374,7 @@ if(_savedWeek >= 0 && _savedWeek <= 11){ curWeek = _savedWeek; }
 try {
 initLongPress();
 bindStatic();
+rebuildProgSelect();
 updateProgBadge();
 renderTabs();
 renderDay();
