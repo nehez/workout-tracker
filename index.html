@@ -331,7 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.2</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.3</div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -389,13 +389,14 @@ var PROGRAM = [];
 // ── THEMES ────────────────────────────────────────────────────────────────
 var THEME_KEY = 'hw2_theme';
 var THEMES = {
-  default:    { label:'Default',     accent:'#d4a017', vars:{'--bg':'#0a0a0a','--surface':'#141414','--card':'#1c1c1c','--border':'#2a2a2a','--accent':'#d4a017','--green':'#2d6a2d','--checked-bg':'#0f1a0f','--checked-text':'#5a8a5a','--checked-text-dim':'#4a7a4a','--text':'#e8e4dc','--muted':'#888','--mod':'#c45c2a','--section-bg':'#111','--red':'#c44'} },
-  army:       { label:'Army',        accent:'#c8a800', vars:{'--bg':'#080c05','--surface':'#111809','--card':'#182510','--border':'#283a18','--accent':'#c8a800','--green':'#6a9820','--checked-bg':'#141e06','--checked-text':'#8aaa30','--checked-text-dim':'#6a8a20','--text':'#dce8c8','--muted':'#7a9060','--mod':'#c4782a','--section-bg':'#0c1008','--red':'#c44'} },
-  navy:       { label:'Navy',        accent:'#c8a800', vars:{'--bg':'#04080f','--surface':'#08102a','--card':'#0d1838','--border':'#182848','--accent':'#c8a800','--green':'#1a7a4a','--checked-bg':'#061820','--checked-text':'#3a9060','--checked-text-dim':'#2a7050','--text':'#ccd8f0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c1c','--red':'#c44'} },
-  marines:    { label:'Marines',     accent:'#c8a800', vars:{'--bg':'#090404','--surface':'#160808','--card':'#1e0c0c','--border':'#381414','--accent':'#c8a800','--green':'#3a8a30','--checked-bg':'#0c180a','--checked-text':'#5a9a40','--checked-text-dim':'#4a8030','--text':'#f0e0e0','--muted':'#906868','--mod':'#c83030','--section-bg':'#0f0606','--red':'#e44'} },
-  airforce:   { label:'Air Force',   accent:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2a8060','--checked-bg':'#081820','--checked-text':'#4a9a70','--checked-text-dim':'#3a8060','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
-  spaceforce: { label:'Space Force', accent:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2a9090','--checked-bg':'#081818','--checked-text':'#3a9898','--checked-text-dim':'#2a7878','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
-  coastguard: { label:'Coast Guard', accent:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2a8050','--checked-bg':'#081820','--checked-text':'#4a9060','--checked-text-dim':'#3a7050','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
+  default:    { swatch:'#d4a017', vars:{'--bg':'#0a0a0a','--surface':'#141414','--card':'#1c1c1c','--border':'#2a2a2a','--accent':'#d4a017','--green':'#2d6a2d','--checked-bg':'#0f1a0f','--checked-text':'#5a8a5a','--checked-text-dim':'#4a7a4a','--text':'#e8e4dc','--muted':'#888','--mod':'#c45c2a','--section-bg':'#111','--red':'#c44'} },
+  army:       { swatch:'#5a8a1a', vars:{'--bg':'#080c05','--surface':'#111809','--card':'#182510','--border':'#283a18','--accent':'#c8a800','--green':'#6a9820','--checked-bg':'#141e06','--checked-text':'#8aaa30','--checked-text-dim':'#6a8a20','--text':'#dce8c8','--muted':'#7a9060','--mod':'#c4782a','--section-bg':'#0c1008','--red':'#c44'} },
+  navy:       { swatch:'#1a3a8a', vars:{'--bg':'#04080f','--surface':'#08102a','--card':'#0d1838','--border':'#182848','--accent':'#c8a800','--green':'#1a7a4a','--checked-bg':'#061820','--checked-text':'#3a9060','--checked-text-dim':'#2a7050','--text':'#ccd8f0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c1c','--red':'#c44'} },
+  marines:    { swatch:'#8a0808', vars:{'--bg':'#090404','--surface':'#160808','--card':'#1e0c0c','--border':'#381414','--accent':'#c8a800','--green':'#3a8a30','--checked-bg':'#0c180a','--checked-text':'#5a9a40','--checked-text-dim':'#4a8030','--text':'#f0e0e0','--muted':'#906868','--mod':'#c83030','--section-bg':'#0f0606','--red':'#e44'} },
+  airforce:   { swatch:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2a8060','--checked-bg':'#081820','--checked-text':'#4a9a70','--checked-text-dim':'#3a8060','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
+  spaceforce: { swatch:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2a9090','--checked-bg':'#081818','--checked-text':'#3a9898','--checked-text-dim':'#2a7878','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
+  coastguard: { swatch:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2a8050','--checked-bg':'#081820','--checked-text':'#4a9060','--checked-text-dim':'#3a7050','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
+  desert:     { swatch:'#c8a060', vars:{'--bg':'#0e0b07','--surface':'#1a1508','--card':'#22190e','--border':'#38280e','--accent':'#c8a060','--green':'#8a8020','--checked-bg':'#181408','--checked-text':'#a09030','--checked-text-dim':'#807020','--text':'#e8dcc0','--muted':'#9a8870','--mod':'#c07830','--section-bg':'#140e06','--red':'#c44'} },
 };
 function applyTheme(id){
   var t = THEMES[id] || THEMES.default;
@@ -418,8 +419,8 @@ function renderThemePicker(){
     var t = THEMES[id];
     var active = id === current;
     var btn = document.createElement('button');
-    btn.style.cssText = 'padding:10px 4px;border-radius:5px;border:2px solid '+(active ? t.accent : '#333')+';background:'+t.vars['--bg']+';cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;';
-    btn.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:'+t.accent+';"></div>';
+    btn.style.cssText = 'padding:10px 4px;border-radius:5px;border:2px solid '+(active ? t.swatch : '#333')+';background:'+t.vars['--bg']+';cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;';
+    btn.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:'+t.swatch+';"></div>';
     btn.addEventListener('click', function(){ applyTheme(id); renderThemePicker(); });
     grid.appendChild(btn);
   });
