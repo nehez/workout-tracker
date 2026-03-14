@@ -73,13 +73,19 @@ export default {
 
       let aiResponse;
       try {
-        aiResponse = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
-          ],
-          max_tokens: 8000,
-        });
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('AI call timed out after 25 seconds. Try a shorter document.')), 25000)
+        );
+        aiResponse = await Promise.race([
+          env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
+            ],
+            max_tokens: 8000,
+          }),
+          timeout,
+        ]);
       } catch (e) {
         return json({ error: 'AI inference failed: ' + e.message }, 502, origin);
       }
