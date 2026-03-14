@@ -1,29 +1,26 @@
-// Workout Tracker — AI Conversion Proxy
+// Workout Tracker — AI Conversion Worker (Cloudflare Workers AI)
 // Deploy this to Cloudflare Workers.
-// Set ANTHROPIC_API_KEY as a secret in your Worker's Settings → Variables.
+// Requires an AI binding named "AI" in wrangler.toml — no API keys needed.
 //
-// This worker accepts the extracted document text from the app,
-// calls the Anthropic API with your key (never exposed to the browser),
-// and returns the converted program JSON.
+// wrangler.toml:
+//   [ai]
+//   binding = "AI"
 
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
-const PROMPT_PREFIX = `Convert this workout program document to JSON. Return ONLY valid JSON with no explanation and no markdown code fences.
+const SYSTEM_PROMPT = `You are a workout program converter. Your only job is to output valid JSON — no explanation, no markdown fences, nothing else.
 
-Required format:
-{"id":"unique_id","name":"Program Name","desc":"Short description","weeks":[{"week":1,"phase":1,"days":[{"label":"DAY 1 — LOWER BODY","time":"~60 min","sections":[{"label":"MAIN LIFT","exercises":[{"name":"Back Squat","sets":"5 x 5 / 2 min"}]}]},{"label":"DAY 7 — REST","rest":true,"sections":[]}]}]}
+Convert the workout program text the user provides into this exact JSON structure:
+{"id":"unique_id","name":"Program Name","desc":"Short description","weeks":[{"week":1,"phase":1,"days":[{"label":"DAY 1 — LOWER BODY","time":"~60 min","sections":[{"label":"MAIN LIFT","exercises":[{"name":"Back Squat","sets":"5 x 5 / 2 min","note":"Optional cue"}]}]},{"label":"DAY 7 — REST","rest":true,"sections":[]}]}]}
 
 Rules:
-- id: lowercase letters and underscores only, no spaces
+- id: lowercase letters and underscores only, no spaces or special chars
 - phase: integer, increment every 4 weeks (use 1 for all weeks if unclear)
 - Rest days must use: {"label":"DAY X — REST","rest":true,"sections":[]}
-- sets format examples: "5 x 5 / 2 min", "3 x 12 / 60s", "4 x MAX / 90s", "continuous"
+- sets format examples: "5 x 5 / 2 min", "3 x 12 / 60s", "4 x MAX / 90s", "continuous", "1x TABATA"
 - Section labels: short, uppercase (e.g. "MAIN LIFT", "ACCESSORY", "CONDITIONING")
-- Include ALL weeks from the program — do not truncate
-
-Document:
-
-`;
+- Include ALL weeks from the program — do not truncate or summarize
+- Return ONLY valid JSON. No markdown. No explanation.`;
 
 function corsHeaders(origin) {
   const allowed = origin === ALLOWED_ORIGIN || origin === 'http://localhost' || (origin && origin.startsWith('http://127.'));
@@ -34,80 +31,64 @@ function corsHeaders(origin) {
   };
 }
 
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
-});
-
-async function handleRequest(request) {
-  const origin = request.headers.get('Origin') || '';
-
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders(origin) });
-  }
-
-  if (request.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
-  }
-
-  let text;
-  try {
-    const body = await request.json();
-    text = body.text;
-    if (!text || typeof text !== 'string' || text.trim().length < 30) {
-      return json({ error: 'No usable text provided.' }, 400, origin);
-    }
-  } catch (e) {
-    return json({ error: 'Invalid request body.' }, 400, origin);
-  }
-
-  const prompt = PROMPT_PREFIX + text.slice(0, 14000);
-
-  let apiResponse;
-  try {
-    apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-  } catch (e) {
-    return json({ error: 'Failed to reach Anthropic API: ' + e.message }, 502, origin);
-  }
-
-  const data = await apiResponse.json();
-
-  if (data.error) {
-    return json({ error: data.error.message || 'Anthropic API error' }, 502, origin);
-  }
-
-  const raw = data.content && data.content[0] && data.content[0].text;
-  if (!raw) {
-    return json({ error: 'No content returned from Claude.' }, 502, origin);
-  }
-
-  // Strip markdown fences if Claude added them despite instructions
-  const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-
-  let parsed;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (e) {
-    return json({ error: 'Claude returned malformed JSON. Try a cleaner source document.' }, 502, origin);
-  }
-
-  return json({ result: parsed }, 200, origin);
-}
-
 function json(body, status, origin) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
   });
 }
+
+export default {
+  async fetch(request, env) {
+    const origin = request.headers.get('Origin') || '';
+
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    }
+
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    let text;
+    try {
+      const body = await request.json();
+      text = body.text;
+      if (!text || typeof text !== 'string' || text.trim().length < 30) {
+        return json({ error: 'No usable text provided.' }, 400, origin);
+      }
+    } catch (e) {
+      return json({ error: 'Invalid request body.' }, 400, origin);
+    }
+
+    let aiResponse;
+    try {
+      aiResponse = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
+        ],
+        max_tokens: 8000,
+      });
+    } catch (e) {
+      return json({ error: 'AI inference failed: ' + e.message }, 502, origin);
+    }
+
+    const raw = aiResponse && (aiResponse.response || (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message && aiResponse.choices[0].message.content));
+    if (!raw) {
+      return json({ error: 'No response from AI model.' }, 502, origin);
+    }
+
+    // Strip markdown fences if the model added them despite instructions
+    const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
+    }
+
+    return json({ result: parsed }, 200, origin);
+  },
+};
