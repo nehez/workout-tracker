@@ -279,7 +279,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
   <button id="finish-btn">&#10003; FINISH WORKOUT</button>
   <button class="bar-btn danger" id="btn-clear-day">CLEAR DAY</button>
   <button class="bar-btn danger" id="btn-clear-week">CLEAR WEEK</button>
-  <button class="bar-btn safe" id="btn-backup">FILES<br><span style="font-size:9px;opacity:.6;letter-spacing:.04em">v1.0</span></button>
+  <button class="bar-btn safe" id="btn-backup">FILES</button>
 </div>
 
 
@@ -331,6 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v1.0</div>
 
     <!-- PROGRAMS: Upload -->
     <div class="manage-section">
@@ -1108,8 +1109,9 @@ function switchProgram(id){
   NOTE_KEY    = NOTE_KEY_BASE+'_'+id;
   CUSTOM_KEY  = CUSTOM_KEY_BASE+'_'+id;
   SETCNT_KEY  = SETCNT_KEY_BASE+'_'+id;
-  curWeek = 0; curDay = 0;
+  curWeek = 0;
   wtReset();
+  curDay = findFirstUnfinishedDay();
   updateProgBadge();
   renderTabs();
   renderDay();
