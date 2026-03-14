@@ -9,7 +9,7 @@
 <title>Workout Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0a0a0a;--surface:#141414;--card:#1c1c1c;--border:#2a2a2a;--accent:#d4a017;--green:#2d6a2d;--text:#e8e4dc;--muted:#888;--mod:#c45c2a;--or:#666;--section-bg:#111;--red:#c44}
+:root{--bg:#0a0a0a;--surface:#141414;--card:#1c1c1c;--border:#2a2a2a;--accent:#d4a017;--green:#2d6a2d;--checked-bg:#0f1a0f;--checked-text:#5a8a5a;--checked-text-dim:#4a7a4a;--text:#e8e4dc;--muted:#888;--mod:#c45c2a;--or:#666;--section-bg:#111;--red:#c44}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;display:flex;flex-direction:column;height:100dvh}
@@ -53,7 +53,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 .section-label{background:var(--section-bg);border-left:3px solid #8b4513;padding:7px 14px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
 .ex-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:52px;background:var(--card);cursor:pointer;transition:background .1s;user-select:none;-webkit-user-select:none}
 .ex-row:active{background:#222}
-.ex-row.checked{background:#0f1a0f}
+.ex-row.checked{background:var(--checked-bg)}
 .check-col{width:52px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border)}
 .checkbox{width:26px;height:26px;border:2px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s;flex-shrink:0;position:relative}
 .ex-row.checked .checkbox{background:var(--green);border-color:var(--green)}
@@ -63,9 +63,9 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 .ex-row.checked .chk{opacity:1}
 .ex-info{flex:1;padding:8px 10px 8px 12px;display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0}
 .ex-name{font-weight:600;font-size:14px;color:var(--text);line-height:1.3}
-.ex-row.checked .ex-name{color:#5a8a5a}
+.ex-row.checked .ex-name{color:var(--checked-text)}
 .ex-sets{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;color:var(--accent);letter-spacing:.03em}
-.ex-row.checked .ex-sets{color:#4a7a4a}
+.ex-row.checked .ex-sets{color:var(--checked-text-dim)}
 .mod-tag{font-size:10px;font-weight:700;color:var(--mod);letter-spacing:.08em}
 .yt-btn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:3px;background:#1a1a1a;border:1px solid #333;flex-shrink:0;text-decoration:none;opacity:.55;transition:opacity .15s}
 .yt-btn:active{opacity:1}
@@ -331,7 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.0</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.2</div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -389,13 +389,13 @@ var PROGRAM = [];
 // ── THEMES ────────────────────────────────────────────────────────────────
 var THEME_KEY = 'hw2_theme';
 var THEMES = {
-  default:    { label:'Default',     accent:'#d4a017', vars:{'--bg':'#0a0a0a','--surface':'#141414','--card':'#1c1c1c','--border':'#2a2a2a','--accent':'#d4a017','--green':'#2d6a2d','--text':'#e8e4dc','--muted':'#888','--mod':'#c45c2a','--section-bg':'#111','--red':'#c44'} },
-  army:       { label:'Army',        accent:'#c8a800', vars:{'--bg':'#080c05','--surface':'#111809','--card':'#182510','--border':'#283a18','--accent':'#c8a800','--green':'#4a8020','--text':'#dce8c8','--muted':'#7a9060','--mod':'#c4782a','--section-bg':'#0c1008','--red':'#c44'} },
-  navy:       { label:'Navy',        accent:'#c8a800', vars:{'--bg':'#04080f','--surface':'#08102a','--card':'#0d1838','--border':'#182848','--accent':'#c8a800','--green':'#1a6a3a','--text':'#ccd8f0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c1c','--red':'#c44'} },
-  marines:    { label:'Marines',     accent:'#c8a800', vars:{'--bg':'#090404','--surface':'#160808','--card':'#1e0c0c','--border':'#381414','--accent':'#c8a800','--green':'#2d6a2d','--text':'#f0e0e0','--muted':'#906868','--mod':'#c83030','--section-bg':'#0f0606','--red':'#e44'} },
-  airforce:   { label:'Air Force',   accent:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2d6a4d','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
-  spaceforce: { label:'Space Force', accent:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2d6a5a','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
-  coastguard: { label:'Coast Guard', accent:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2d6a2d','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
+  default:    { label:'Default',     accent:'#d4a017', vars:{'--bg':'#0a0a0a','--surface':'#141414','--card':'#1c1c1c','--border':'#2a2a2a','--accent':'#d4a017','--green':'#2d6a2d','--checked-bg':'#0f1a0f','--checked-text':'#5a8a5a','--checked-text-dim':'#4a7a4a','--text':'#e8e4dc','--muted':'#888','--mod':'#c45c2a','--section-bg':'#111','--red':'#c44'} },
+  army:       { label:'Army',        accent:'#c8a800', vars:{'--bg':'#080c05','--surface':'#111809','--card':'#182510','--border':'#283a18','--accent':'#c8a800','--green':'#6a9820','--checked-bg':'#141e06','--checked-text':'#8aaa30','--checked-text-dim':'#6a8a20','--text':'#dce8c8','--muted':'#7a9060','--mod':'#c4782a','--section-bg':'#0c1008','--red':'#c44'} },
+  navy:       { label:'Navy',        accent:'#c8a800', vars:{'--bg':'#04080f','--surface':'#08102a','--card':'#0d1838','--border':'#182848','--accent':'#c8a800','--green':'#1a7a4a','--checked-bg':'#061820','--checked-text':'#3a9060','--checked-text-dim':'#2a7050','--text':'#ccd8f0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c1c','--red':'#c44'} },
+  marines:    { label:'Marines',     accent:'#c8a800', vars:{'--bg':'#090404','--surface':'#160808','--card':'#1e0c0c','--border':'#381414','--accent':'#c8a800','--green':'#3a8a30','--checked-bg':'#0c180a','--checked-text':'#5a9a40','--checked-text-dim':'#4a8030','--text':'#f0e0e0','--muted':'#906868','--mod':'#c83030','--section-bg':'#0f0606','--red':'#e44'} },
+  airforce:   { label:'Air Force',   accent:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2a8060','--checked-bg':'#081820','--checked-text':'#4a9a70','--checked-text-dim':'#3a8060','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
+  spaceforce: { label:'Space Force', accent:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2a9090','--checked-bg':'#081818','--checked-text':'#3a9898','--checked-text-dim':'#2a7878','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
+  coastguard: { label:'Coast Guard', accent:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2a8050','--checked-bg':'#081820','--checked-text':'#4a9060','--checked-text-dim':'#3a7050','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
 };
 function applyTheme(id){
   var t = THEMES[id] || THEMES.default;
