@@ -349,10 +349,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
     <!-- AUTO-CONVERT -->
     <div class="manage-section">
       <div class="manage-section-title">Auto-Convert Program</div>
-      <p class="io-note">Upload a PDF, Word doc, or text file — we'll convert it to a program automatically using Claude AI.</p>
-      <label style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:5px">Anthropic API Key</label>
-      <input type="password" id="api-key-input" class="add-input" placeholder="sk-ant-api03-..." autocomplete="off" style="margin-bottom:8px">
-      <p class="io-note" style="margin-bottom:8px">Your key is stored only on this device. Get one free at <strong style="color:var(--text)">console.anthropic.com</strong></p>
+      <p class="io-note">Upload a PDF, Word doc, or text file — AI converts it to a program automatically. No API key needed.</p>
       <button class="io-btn primary" id="btn-auto-convert">&#9889; UPLOAD &amp; CONVERT</button>
       <input type="file" id="auto-convert-file" accept=".pdf,.docx,.doc,.txt,.md" style="display:none">
       <div id="auto-convert-status" style="display:none;font-size:12px;margin-top:8px;line-height:1.5;padding:8px;border-radius:4px;background:var(--card);border:1px solid var(--border)"></div>
@@ -965,8 +962,9 @@ function stopConfetti(){if(confettiId){cancelAnimationFrame(confettiId);confetti
 
 // EXPORT / IMPORT
 
-// ── AUTO-CONVERT: PDF/DOCX/TXT → Claude → Program ────────────────────────
-var AC_KEY = 'hw2_api_key';
+// ── AUTO-CONVERT: PDF/DOCX/TXT → AI Worker → Program ────────────────────
+// Set this to your deployed Cloudflare Worker URL:
+var WORKER_URL = 'https://workout-ai-converter.YOUR-SUBDOMAIN.workers.dev';
 
 function acLoadScript(src, cb){
   if(document.querySelector('script[src="'+src+'"]')){cb();return;}
@@ -1029,47 +1027,28 @@ function acExtractText(file, cb){
   cb(new Error('Unsupported file type: .'+ext+'. Use PDF, DOCX, TXT, or MD.'));
 }
 
-function acCallClaude(apiKey, text, cb){
-  var prompt = 'Convert this workout program document to JSON. Return ONLY valid JSON with no explanation and no markdown code fences.\n\nRequired format:\n{"id":"unique_id","name":"Program Name","desc":"Short description","weeks":[{"week":1,"phase":1,"days":[{"label":"DAY 1 \u2014 LOWER BODY","time":"~60 min","sections":[{"label":"MAIN LIFT","exercises":[{"name":"Back Squat","sets":"5 x 5 / 2 min"}]}]},{"label":"DAY 7 \u2014 REST","rest":true,"sections":[]}]}]}\n\nRules:\n- id: lowercase letters and underscores only, no spaces\n- phase: integer, increment every 4 weeks\n- Rest days must use {"label":"...","rest":true,"sections":[]}\n- sets format examples: "5 x 5 / 2 min", "3 x 12 / 60s", "4 x MAX / 90s"\n- Section labels: short, uppercase (e.g. "MAIN LIFT", "ACCESSORY", "CONDITIONING")\n- Include all weeks from the program\n- If the program has no clear phase structure, use phase 1 for all weeks\n\nDocument:\n\n' + text.slice(0, 14000);
-
-  fetch('https://api.anthropic.com/v1/messages', {
+function acCallWorker(text, cb){
+  fetch(WORKER_URL, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
-      messages: [{role:'user', content: prompt}]
-    })
+    headers: {'content-type': 'application/json'},
+    body: JSON.stringify({text: text})
   })
   .then(function(r){return r.json();})
   .then(function(data){
-    if(data.error){cb(new Error(data.error.message));return;}
-    var raw=data.content&&data.content[0]&&data.content[0].text;
-    if(!raw){cb(new Error('No response received'));return;}
-    raw=raw.replace(/^```(?:json)?\n?/,'').replace(/\n?```$/,'').trim();
-    var obj; try{obj=JSON.parse(raw);}catch(e){cb(new Error('Claude returned malformed JSON. Try a cleaner source document.'));return;}
-    cb(null,obj);
+    if(data.error){cb(new Error(data.error));return;}
+    if(!data.result){cb(new Error('No result returned from AI.'));return;}
+    cb(null, data.result);
   })
-  .catch(function(e){cb(new Error('API error: '+e.message+'. Check your API key and internet connection.'));});
+  .catch(function(e){cb(new Error('Network error: '+e.message));});
 }
 
 function acRun(file){
-  var apiKey=(document.getElementById('api-key-input')||{}).value;
-  if(apiKey) apiKey=apiKey.trim();
-  if(!apiKey){acStatus('Enter your Anthropic API key first.','var(--red)');return;}
-  try{localStorage.setItem(AC_KEY,apiKey);}catch(e){}
-
-  acStatus('Reading file...');
-  acExtractText(file,function(err,text){
+  acStatus('Reading file\u2026');
+  acExtractText(file, function(err, text){
     if(err){acStatus('Read error: '+err.message,'var(--red)');return;}
     if(!text||text.trim().length<30){acStatus('File appears empty or unreadable.','var(--red)');return;}
-    acStatus('Sending to Claude AI\u2026 (15\u201330 seconds)');
-    acCallClaude(apiKey,text,function(err,obj){
+    acStatus('Converting with AI\u2026 (20\u201340 seconds)');
+    acCallWorker(text, function(err, obj){
       if(err){acStatus(err.message,'var(--red)');return;}
       var ve=validateProgJSON(obj);
       if(ve){acStatus('Conversion issue: '+ve+'\nTry again or check the source file.','var(--red)');return;}
@@ -1090,10 +1069,6 @@ function acRun(file){
 function showManage(){
   renderManageOverlay();
   renderThemePicker();
-  // Pre-fill saved API key
-  var keyEl=document.getElementById('api-key-input');
-  if(keyEl){ try{keyEl.value=localStorage.getItem(AC_KEY)||'';}catch(e){} }
-  // Bind auto-convert button
   var acBtn=document.getElementById('btn-auto-convert');
   var acFile=document.getElementById('auto-convert-file');
   if(acBtn&&acFile){
