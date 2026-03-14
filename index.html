@@ -219,8 +219,8 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
   <span id="prog-label">PROGRAM</span>
   <select id="prog-select">
     <optgroup label="─── BUILT-IN ───">
-      <option value="hw2_orig">HW2 — ORIGINAL</option>
-      <option value="hw1">HW1 — ORIGINAL</option>
+      <option value="hw2_orig">HYBRID II</option>
+      <option value="hw1">HYBRID I</option>
       <option value="build_orig">BUILD</option>
     </optgroup>
   </select>
@@ -331,7 +331,13 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v1.0</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.0</div>
+
+    <!-- THEME -->
+    <div class="manage-section">
+      <div class="manage-section-title">Theme</div>
+      <div id="theme-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;"></div>
+    </div>
 
     <!-- PROGRAMS: Upload -->
     <div class="manage-section">
@@ -378,6 +384,47 @@ var PROGRAM_META = {
 // curProgId and PROGRAM are initialized inside the loadAllBuiltins callback at the bottom of the file
 var curProgId = 'hw2_orig';
 var PROGRAM = [];
+
+
+// ── THEMES ────────────────────────────────────────────────────────────────
+var THEME_KEY = 'hw2_theme';
+var THEMES = {
+  default:    { label:'Default',     accent:'#d4a017', vars:{'--bg':'#0a0a0a','--surface':'#141414','--card':'#1c1c1c','--border':'#2a2a2a','--accent':'#d4a017','--green':'#2d6a2d','--text':'#e8e4dc','--muted':'#888','--mod':'#c45c2a','--section-bg':'#111','--red':'#c44'} },
+  army:       { label:'Army',        accent:'#c8a800', vars:{'--bg':'#080c05','--surface':'#111809','--card':'#182510','--border':'#283a18','--accent':'#c8a800','--green':'#4a8020','--text':'#dce8c8','--muted':'#7a9060','--mod':'#c4782a','--section-bg':'#0c1008','--red':'#c44'} },
+  navy:       { label:'Navy',        accent:'#c8a800', vars:{'--bg':'#04080f','--surface':'#08102a','--card':'#0d1838','--border':'#182848','--accent':'#c8a800','--green':'#1a6a3a','--text':'#ccd8f0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c1c','--red':'#c44'} },
+  marines:    { label:'Marines',     accent:'#c8a800', vars:{'--bg':'#090404','--surface':'#160808','--card':'#1e0c0c','--border':'#381414','--accent':'#c8a800','--green':'#2d6a2d','--text':'#f0e0e0','--muted':'#906868','--mod':'#c83030','--section-bg':'#0f0606','--red':'#e44'} },
+  airforce:   { label:'Air Force',   accent:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2d6a4d','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
+  spaceforce: { label:'Space Force', accent:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2d6a5a','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
+  coastguard: { label:'Coast Guard', accent:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2d6a2d','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
+};
+function applyTheme(id){
+  var t = THEMES[id] || THEMES.default;
+  var root = document.documentElement;
+  Object.keys(t.vars).forEach(function(k){ root.style.setProperty(k, t.vars[k]); });
+  try{ localStorage.setItem(THEME_KEY, id); }catch(e){}
+}
+function loadTheme(){
+  var id = 'default';
+  try{ id = localStorage.getItem(THEME_KEY) || 'default'; }catch(e){}
+  applyTheme(id);
+}
+function renderThemePicker(){
+  var grid = document.getElementById('theme-grid');
+  if(!grid) return;
+  var current = 'default';
+  try{ current = localStorage.getItem(THEME_KEY) || 'default'; }catch(e){}
+  grid.innerHTML = '';
+  Object.keys(THEMES).forEach(function(id){
+    var t = THEMES[id];
+    var active = id === current;
+    var btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 4px;border-radius:5px;border:2px solid '+(active ? t.accent : '#333')+';background:'+t.vars['--bg']+';color:'+t.vars['--text']+';font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;text-transform:uppercase;';
+    btn.innerHTML = '<div style="width:14px;height:14px;border-radius:50%;background:'+t.accent+';flex-shrink:0"></div>'+t.label;
+    btn.addEventListener('click', function(){ applyTheme(id); renderThemePicker(); });
+    grid.appendChild(btn);
+  });
+}
+loadTheme();
 
 // ── PROGRAM FETCH / CACHE SYSTEM ──────────────────────────────────────────
 var PROG_CACHE_PREFIX = 'hw2_progcache_';
@@ -913,7 +960,7 @@ function launchConfetti(){
 function stopConfetti(){if(confettiId){cancelAnimationFrame(confettiId);confettiId=null;}var c=document.getElementById('confetti-canvas');c.getContext('2d').clearRect(0,0,c.width,c.height);}
 
 // EXPORT / IMPORT
-function showManage(){renderManageOverlay();document.getElementById('manage-overlay').classList.add('show');}
+function showManage(){renderManageOverlay();renderThemePicker();document.getElementById('manage-overlay').classList.add('show');}
 function hideManage(){document.getElementById('manage-overlay').classList.remove('show');}
 function exportData(){
   var payload={version:1,exported:new Date().toISOString(),checks:loadState()};
