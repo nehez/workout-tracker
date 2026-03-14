@@ -14,7 +14,7 @@
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;display:flex;flex-direction:column;height:100dvh}
 #topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
-#topbar-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#topbar-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;display:flex;justify-content:flex-start;align-items:center;gap:6px}
 #app-version{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);opacity:.7}
 #week-row{display:flex;align-items:center;gap:8px}
 #week-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:var(--text);min-width:90px}
@@ -421,7 +421,7 @@ function renderThemePicker(){
     var active = id === current;
     var btn = document.createElement('button');
     btn.style.cssText = 'padding:10px 4px;border-radius:5px;border:2px solid '+(active ? t.swatch : '#333')+';background:'+t.vars['--bg']+';cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;';
-    btn.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:'+t.swatch+';"></div>';
+    btn.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:'+t.swatch+';border:1px solid rgba(128,128,128,0.4);box-sizing:border-box;"></div>';
     btn.addEventListener('click', function(){ applyTheme(id); renderThemePicker(); });
     grid.appendChild(btn);
   });

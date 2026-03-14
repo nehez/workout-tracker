@@ -1,10 +1,14 @@
 // Workout Tracker — AI Conversion Worker (Cloudflare Workers AI)
 // Deploy this to Cloudflare Workers.
-// Requires an AI binding named "AI" in wrangler.toml — no API keys needed.
 //
-// wrangler.toml:
-//   [ai]
-//   binding = "AI"
+// IMPORTANT: In the Cloudflare dashboard editor, make sure the worker is set to
+// "ES Module" format (not "Service Worker"). The editor has a toggle — look for
+// it in the top-right of the code editor. This file uses `export default {}` syntax
+// which requires ES Module format. Using Service Worker format will cause a parse
+// error and "Failed to fetch" on every request.
+//
+// Requires an AI binding named "AI":
+//   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
