@@ -1,0 +1,25 @@
+name: Auto-merge claude branches to main
+
+on:
+  push:
+    branches:
+      - 'claude/**'
+
+jobs:
+  merge-to-main:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge to main and deploy
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git checkout main
+          git merge --no-ff ${{ github.ref_name }} -m "Auto-deploy: merge ${{ github.ref_name }} into main"
+          git push origin main
