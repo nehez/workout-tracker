@@ -230,7 +230,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER<span id="app-version" style="font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.8;color:var(--accent)">v2.7</span></div>
+  <div id="topbar-title">WORKOUT TRACKER<span id="app-version" style="font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.8;color:var(--accent)">v3.0</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -331,7 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.7</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.0</div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -346,13 +346,16 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
       <input type="file" id="prog-upload-input-unified" accept=".json,application/json">
     </div>
 
-    <!-- PROGRAMS: AI Converter -->
+    <!-- AUTO-CONVERT -->
     <div class="manage-section">
-      <div class="manage-section-title">Convert PDF to JSON</div>
-      <div class="ai-btn-row">
-        <a class="ai-link-btn claude" id="btn-open-claude" target="_blank" rel="noopener">&#9670; CLAUDE</a>
-        <a class="ai-link-btn chatgpt" id="btn-open-chatgpt" target="_blank" rel="noopener">&#9632; CHATGPT</a>
-      </div>
+      <div class="manage-section-title">Auto-Convert Program</div>
+      <p class="io-note">Upload a PDF, Word doc, or text file — we'll convert it to a program automatically using Claude AI.</p>
+      <label style="font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:5px">Anthropic API Key</label>
+      <input type="password" id="api-key-input" class="add-input" placeholder="sk-ant-api03-..." autocomplete="off" style="margin-bottom:8px">
+      <p class="io-note" style="margin-bottom:8px">Your key is stored only on this device. Get one free at <strong style="color:var(--text)">console.anthropic.com</strong></p>
+      <button class="io-btn primary" id="btn-auto-convert">&#9889; UPLOAD &amp; CONVERT</button>
+      <input type="file" id="auto-convert-file" accept=".pdf,.docx,.doc,.txt,.md" style="display:none">
+      <div id="auto-convert-status" style="display:none;font-size:12px;margin-top:8px;line-height:1.5;padding:8px;border-radius:4px;background:var(--card);border:1px solid var(--border)"></div>
     </div>
 
     <!-- CUSTOM PROGRAMS: Manage -->
@@ -961,7 +964,144 @@ function launchConfetti(){
 function stopConfetti(){if(confettiId){cancelAnimationFrame(confettiId);confettiId=null;}var c=document.getElementById('confetti-canvas');c.getContext('2d').clearRect(0,0,c.width,c.height);}
 
 // EXPORT / IMPORT
-function showManage(){renderManageOverlay();renderThemePicker();document.getElementById('manage-overlay').classList.add('show');}
+
+// ── AUTO-CONVERT: PDF/DOCX/TXT → Claude → Program ────────────────────────
+var AC_KEY = 'hw2_api_key';
+
+function acLoadScript(src, cb){
+  if(document.querySelector('script[src="'+src+'"]')){cb();return;}
+  var s=document.createElement('script');s.src=src;
+  s.onload=function(){cb();};
+  s.onerror=function(){cb(new Error('Failed to load '+src));};
+  document.head.appendChild(s);
+}
+
+function acStatus(msg, color){
+  var el=document.getElementById('auto-convert-status');
+  if(!el) return;
+  el.style.display = msg ? 'block' : 'none';
+  el.style.color = color || 'var(--muted)';
+  el.textContent = msg || '';
+}
+
+function acExtractText(file, cb){
+  var ext=file.name.split('.').pop().toLowerCase();
+  if(ext==='txt'||ext==='md'){
+    var r=new FileReader();
+    r.onload=function(e){cb(null,e.target.result);};
+    r.onerror=function(){cb(new Error('Could not read file'));};
+    r.readAsText(file); return;
+  }
+  if(ext==='pdf'){
+    acStatus('Loading PDF reader...');
+    acLoadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',function(err){
+      if(err){cb(err);return;}
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      var r=new FileReader();
+      r.onload=function(e){
+        pdfjsLib.getDocument({data:new Uint8Array(e.target.result)}).promise.then(function(pdf){
+          var pages=[],rem=pdf.numPages;
+          for(var i=1;i<=pdf.numPages;i++){
+            (function(n){pdf.getPage(n).then(function(pg){pg.getTextContent().then(function(tc){
+              pages[n-1]=tc.items.map(function(x){return x.str;}).join(' ');
+              if(--rem===0) cb(null,pages.join('\n'));
+            });});})(i);
+          }
+        }).catch(cb);
+      };
+      r.onerror=function(){cb(new Error('Could not read PDF'));};
+      r.readAsArrayBuffer(file);
+    }); return;
+  }
+  if(ext==='docx'||ext==='doc'){
+    acStatus('Loading document reader...');
+    acLoadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',function(err){
+      if(err){cb(err);return;}
+      var r=new FileReader();
+      r.onload=function(e){
+        mammoth.extractRawText({arrayBuffer:e.target.result})
+          .then(function(res){cb(null,res.value);}).catch(cb);
+      };
+      r.onerror=function(){cb(new Error('Could not read document'));};
+      r.readAsArrayBuffer(file);
+    }); return;
+  }
+  cb(new Error('Unsupported file type: .'+ext+'. Use PDF, DOCX, TXT, or MD.'));
+}
+
+function acCallClaude(apiKey, text, cb){
+  var prompt = 'Convert this workout program document to JSON. Return ONLY valid JSON with no explanation and no markdown code fences.\n\nRequired format:\n{"id":"unique_id","name":"Program Name","desc":"Short description","weeks":[{"week":1,"phase":1,"days":[{"label":"DAY 1 \u2014 LOWER BODY","time":"~60 min","sections":[{"label":"MAIN LIFT","exercises":[{"name":"Back Squat","sets":"5 x 5 / 2 min"}]}]},{"label":"DAY 7 \u2014 REST","rest":true,"sections":[]}]}]}\n\nRules:\n- id: lowercase letters and underscores only, no spaces\n- phase: integer, increment every 4 weeks\n- Rest days must use {"label":"...","rest":true,"sections":[]}\n- sets format examples: "5 x 5 / 2 min", "3 x 12 / 60s", "4 x MAX / 90s"\n- Section labels: short, uppercase (e.g. "MAIN LIFT", "ACCESSORY", "CONDITIONING")\n- Include all weeks from the program\n- If the program has no clear phase structure, use phase 1 for all weeks\n\nDocument:\n\n' + text.slice(0, 14000);
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8000,
+      messages: [{role:'user', content: prompt}]
+    })
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data.error){cb(new Error(data.error.message));return;}
+    var raw=data.content&&data.content[0]&&data.content[0].text;
+    if(!raw){cb(new Error('No response received'));return;}
+    raw=raw.replace(/^```(?:json)?\n?/,'').replace(/\n?```$/,'').trim();
+    var obj; try{obj=JSON.parse(raw);}catch(e){cb(new Error('Claude returned malformed JSON. Try a cleaner source document.'));return;}
+    cb(null,obj);
+  })
+  .catch(function(e){cb(new Error('API error: '+e.message+'. Check your API key and internet connection.'));});
+}
+
+function acRun(file){
+  var apiKey=(document.getElementById('api-key-input')||{}).value;
+  if(apiKey) apiKey=apiKey.trim();
+  if(!apiKey){acStatus('Enter your Anthropic API key first.','var(--red)');return;}
+  try{localStorage.setItem(AC_KEY,apiKey);}catch(e){}
+
+  acStatus('Reading file...');
+  acExtractText(file,function(err,text){
+    if(err){acStatus('Read error: '+err.message,'var(--red)');return;}
+    if(!text||text.trim().length<30){acStatus('File appears empty or unreadable.','var(--red)');return;}
+    acStatus('Sending to Claude AI\u2026 (15\u201330 seconds)');
+    acCallClaude(apiKey,text,function(err,obj){
+      if(err){acStatus(err.message,'var(--red)');return;}
+      var ve=validateProgJSON(obj);
+      if(ve){acStatus('Conversion issue: '+ve+'\nTry again or check the source file.','var(--red)');return;}
+      var builtins=['hw2_orig','hw1','build_orig'];
+      if(builtins.indexOf(obj.id)!==-1) obj.id=obj.id+'_imported';
+      var customs=loadCustomProgs(), isUpdate=!!customs[obj.id];
+      customs[obj.id]={name:obj.name,desc:obj.desc,weeks:obj.weeks};
+      saveCustomProgs(customs);
+      PROGRAMS[obj.id]=obj.weeks;
+      PROGRAM_META[obj.id]={name:obj.name,desc:obj.desc};
+      rebuildProgSelect();
+      renderManageOverlay();
+      acStatus((isUpdate?'Updated':'Added')+': "'+obj.name+'" \u2014 '+obj.weeks.length+' week'+(obj.weeks.length!==1?'s':'')+' ready in My Programs.','var(--accent)');
+    });
+  });
+}
+
+function showManage(){
+  renderManageOverlay();
+  renderThemePicker();
+  // Pre-fill saved API key
+  var keyEl=document.getElementById('api-key-input');
+  if(keyEl){ try{keyEl.value=localStorage.getItem(AC_KEY)||'';}catch(e){} }
+  // Bind auto-convert button
+  var acBtn=document.getElementById('btn-auto-convert');
+  var acFile=document.getElementById('auto-convert-file');
+  if(acBtn&&acFile){
+    acBtn.onclick=function(){acFile.click();};
+    acFile.onchange=function(){if(acFile.files[0]){acRun(acFile.files[0]);acFile.value='';}};
+  }
+  document.getElementById('manage-overlay').classList.add('show');
+}
 function hideManage(){document.getElementById('manage-overlay').classList.remove('show');}
 function exportData(){
   var payload={version:1,exported:new Date().toISOString(),checks:loadState()};
@@ -1638,8 +1778,7 @@ function bindStatic(){
     var encoded = encodeURIComponent(prompt);
     var claudeUrl = 'https://claude.ai/new?q=' + encoded;
     var chatgptUrl = 'https://chatgpt.com/?q=' + encoded;
-    document.getElementById('btn-open-claude').href = claudeUrl;
-    document.getElementById('btn-open-chatgpt').href = chatgptUrl;
+    // (AI converter buttons removed — auto-convert replaces them)
   })();
 }
 
