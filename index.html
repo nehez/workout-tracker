@@ -15,6 +15,7 @@ html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;display:flex;flex-direction:column;height:100dvh}
 #topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
 #topbar-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+#app-version{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);opacity:.7}
 #week-row{display:flex;align-items:center;gap:8px}
 #week-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:var(--text);min-width:90px}
 #phase-badge{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px}
@@ -230,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER<span id="app-version" style="font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.8;color:var(--accent)">v3.1</span></div>
+  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.1</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -396,7 +397,7 @@ var THEMES = {
   airforce:   { swatch:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2a8060','--checked-bg':'#081820','--checked-text':'#4a9a70','--checked-text-dim':'#3a8060','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
   spaceforce: { swatch:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2a9090','--checked-bg':'#081818','--checked-text':'#3a9898','--checked-text-dim':'#2a7878','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
   coastguard: { swatch:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2a8050','--checked-bg':'#081820','--checked-text':'#4a9060','--checked-text-dim':'#3a7050','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
-  desert:     { swatch:'#c8a060', vars:{'--bg':'#0e0b07','--surface':'#1a1508','--card':'#22190e','--border':'#38280e','--accent':'#c8a060','--green':'#8a8020','--checked-bg':'#181408','--checked-text':'#a09030','--checked-text-dim':'#807020','--text':'#e8dcc0','--muted':'#9a8870','--mod':'#c07830','--section-bg':'#140e06','--red':'#c44'} },
+  light:      { swatch:'#f0f0f0', vars:{'--bg':'#f4f4f4','--surface':'#ffffff','--card':'#ffffff','--border':'#d8d8d8','--accent':'#b8860b','--green':'#2d6a2d','--checked-bg':'#e8f5e8','--checked-text':'#2d6a2d','--checked-text-dim':'#4a8a4a','--text':'#1a1a1a','--muted':'#666666','--mod':'#c45c2a','--section-bg':'#f0f0f0','--red':'#c00'} },
 };
 function applyTheme(id){
   var t = THEMES[id] || THEMES.default;
@@ -1039,7 +1040,7 @@ function acCallWorker(text, cb){
     if(!data.result){cb(new Error('No result returned from AI.'));return;}
     cb(null, data.result);
   })
-  .catch(function(e){cb(new Error('Network error: '+e.message));});
+  .catch(function(e){cb(new Error('Failed to reach AI worker. Check that the worker is deployed and the AI binding is configured. ('+e.message+')'));});
 }
 
 function acRun(file){

@@ -42,53 +42,64 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
 
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
-
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    let text;
+    // Top-level guard: always return CORS headers so the browser can read the error
     try {
-      const body = await request.json();
-      text = body.text;
-      if (!text || typeof text !== 'string' || text.trim().length < 30) {
-        return json({ error: 'No usable text provided.' }, 400, origin);
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
       }
+
+      if (request.method !== 'POST') {
+        return json({ error: 'Method not allowed.' }, 405, origin);
+      }
+
+      if (!env.AI) {
+        return json({ error: 'AI binding not configured. Add an AI binding named "AI" in the Cloudflare dashboard.' }, 500, origin);
+      }
+
+      let text;
+      try {
+        const body = await request.json();
+        text = body.text;
+        if (!text || typeof text !== 'string' || text.trim().length < 30) {
+          return json({ error: 'No usable text provided.' }, 400, origin);
+        }
+      } catch (e) {
+        return json({ error: 'Invalid request body.' }, 400, origin);
+      }
+
+      let aiResponse;
+      try {
+        aiResponse = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
+          ],
+          max_tokens: 8000,
+        });
+      } catch (e) {
+        return json({ error: 'AI inference failed: ' + e.message }, 502, origin);
+      }
+
+      const raw = aiResponse && (aiResponse.response || (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message && aiResponse.choices[0].message.content));
+      if (!raw) {
+        return json({ error: 'No response from AI model.' }, 502, origin);
+      }
+
+      // Strip markdown fences if the model added them despite instructions
+      const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
+      }
+
+      return json({ result: parsed }, 200, origin);
+
     } catch (e) {
-      return json({ error: 'Invalid request body.' }, 400, origin);
+      // Catch-all: ensure CORS headers are always present so the browser can read the error
+      return json({ error: 'Unexpected worker error: ' + e.message }, 500, origin);
     }
-
-    let aiResponse;
-    try {
-      aiResponse = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
-        ],
-        max_tokens: 8000,
-      });
-    } catch (e) {
-      return json({ error: 'AI inference failed: ' + e.message }, 502, origin);
-    }
-
-    const raw = aiResponse && (aiResponse.response || (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message && aiResponse.choices[0].message.content));
-    if (!raw) {
-      return json({ error: 'No response from AI model.' }, 502, origin);
-    }
-
-    // Strip markdown fences if the model added them despite instructions
-    const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch (e) {
-      return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
-    }
-
-    return json({ result: parsed }, 200, origin);
   },
 };
