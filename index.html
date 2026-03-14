@@ -230,7 +230,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER<span id="app-version" style="font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.45;color:var(--text)">v2.5</span></div>
+  <div id="topbar-title">WORKOUT TRACKER<span id="app-version" style="font-size:10px;font-weight:600;letter-spacing:.08em;opacity:.45;color:var(--text)">v2.6</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -331,7 +331,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.5</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v2.6</div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -1532,6 +1532,21 @@ function toggleEx(si,ei){
   renderTabs();updateProgress();
 }
 
+
+// Direct check: tap the checkbox itself to immediately check/uncheck, bypassing set counter
+function directCheck(si,ei){
+  var skips=loadSkips();
+  if(skips[skipKey(curWeek,curDay,si,ei)]) return;
+  var state=loadState();
+  var alreadyChecked=isChecked(state,curWeek,curDay,si,ei);
+  var sc=loadSetCounts();
+  delete sc[setcntKey(curWeek,curDay,si,ei)];
+  saveSetCounts(sc);
+  setCheck(state,curWeek,curDay,si,ei,!alreadyChecked);
+  saveState(state);
+  renderDay();
+  renderTabs();updateProgress();
+}
 // ── INIT ─────────────────────────────────────────────────────────────────
 function bindStatic(){
   var progSel=document.getElementById('prog-select');
@@ -1642,7 +1657,13 @@ document.getElementById('workout').addEventListener('click',function(e){
   var timerBlock=e.target.closest('.ex-timer-block');
   if(timerBlock){ startTimer(parseInt(timerBlock.dataset.rest)); return; }
   var row=e.target.closest('.ex-row');
-  if(row) toggleEx(parseInt(row.dataset.si),parseInt(row.dataset.ei));
+  if(!row) return;
+  // Tapping the checkbox column = instant check, bypassing set counter
+  if(e.target.closest('.check-col')){
+    directCheck(parseInt(row.dataset.si),parseInt(row.dataset.ei));
+  } else {
+    toggleEx(parseInt(row.dataset.si),parseInt(row.dataset.ei));
+  }
 });
 
 // Set current week on week label double-tap
