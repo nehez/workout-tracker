@@ -418,8 +418,8 @@ function renderThemePicker(){
     var t = THEMES[id];
     var active = id === current;
     var btn = document.createElement('button');
-    btn.style.cssText = 'padding:8px 4px;border-radius:5px;border:2px solid '+(active ? t.accent : '#333')+';background:'+t.vars['--bg']+';color:'+t.vars['--text']+';font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:10px;letter-spacing:.06em;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;width:100%;text-transform:uppercase;';
-    btn.innerHTML = '<div style="width:14px;height:14px;border-radius:50%;background:'+t.accent+';flex-shrink:0"></div>'+t.label;
+    btn.style.cssText = 'padding:10px 4px;border-radius:5px;border:2px solid '+(active ? t.accent : '#333')+';background:'+t.vars['--bg']+';cursor:pointer;display:flex;align-items:center;justify-content:center;width:100%;';
+    btn.innerHTML = '<div style="width:20px;height:20px;border-radius:50%;background:'+t.accent+';"></div>';
     btn.addEventListener('click', function(){ applyTheme(id); renderThemePicker(); });
     grid.appendChild(btn);
   });
