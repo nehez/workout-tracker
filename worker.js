@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.3';
+const VERSION = 'v1.3.4';
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -38,7 +38,9 @@ function corsHeaders(origin) {
 }
 
 function json(body, status, origin) {
-  return new Response(JSON.stringify({ ...body, _version: VERSION, _model: MODEL }), {
+  const payload = { ...body, _version: VERSION, _model: MODEL };
+  if (payload.error) payload.error = payload.error + ' [worker ' + VERSION + ']';
+  return new Response(JSON.stringify(payload), {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
   });
@@ -103,10 +105,14 @@ export default {
         parsed = raw;
       } else {
         const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+        // Extract the JSON object even if the model added surrounding text
+        const jStart = cleaned.indexOf('{');
+        const jEnd = cleaned.lastIndexOf('}');
+        const jsonStr = jStart !== -1 && jEnd > jStart ? cleaned.slice(jStart, jEnd + 1) : cleaned;
         try {
-          parsed = JSON.parse(cleaned);
+          parsed = JSON.parse(jsonStr);
         } catch (e) {
-          return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
+          return json({ error: 'AI returned malformed JSON — the output may have been truncated. Try a shorter document.' }, 502, origin);
         }
       }
 
