@@ -10,8 +10,8 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.6';
-const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const VERSION = 'v1.3.7';
+const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
 const SYSTEM_PROMPT = `You are being asked to convert a workout program into a JSON file for a personal workout tracking app. Follow these instructions exactly.
@@ -135,9 +135,9 @@ export default {
           env.AI.run(MODEL, {
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 20000) },
+              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
             ],
-            max_tokens: 6000,
+            max_tokens: 4000,
           }),
           timeout,
         ]);
