@@ -1031,6 +1031,31 @@ function acExtractText(file, cb){
   cb(new Error('Unsupported file type: .'+ext+'. Use PDF, DOCX, TXT, or MD.'));
 }
 
+function acCleanText(raw){
+  var lines = raw.split(/\r?\n/);
+  // count how often each trimmed line appears — repeated lines are headers/footers
+  var freq = {};
+  lines.forEach(function(l){ var t=l.trim(); if(t) freq[t]=(freq[t]||0)+1; });
+  // remove lines that appear 4+ times (boilerplate) or look like bare page numbers
+  var pageNum = /^-?\s*\d{1,4}\s*-?$|^page\s+\d/i;
+  var filtered = lines.filter(function(l){
+    var t = l.trim();
+    if(!t) return true; // keep blank lines for now, collapse later
+    if(pageNum.test(t)) return false;
+    if(freq[t] >= 4) return false;
+    return true;
+  });
+  // collapse runs of 2+ blank lines into one
+  var out = [], lastBlank = false;
+  filtered.forEach(function(l){
+    var blank = !l.trim();
+    if(blank && lastBlank) return;
+    out.push(l);
+    lastBlank = blank;
+  });
+  return out.join('\n').trim();
+}
+
 function acCallWorker(text, cb){
   fetch(WORKER_URL, {
     method: 'POST',
@@ -1052,6 +1077,7 @@ function acRun(file){
   acExtractText(file, function(err, text){
     if(err){acStatus('Read error: '+err.message,'var(--red)');return;}
     if(!text||text.trim().length<30){acStatus('File appears empty or unreadable.','var(--red)');return;}
+    text = acCleanText(text);
     acStatus('Converting with AI\u2026 (this may take a few minutes)');
     acCallWorker(text, function(err, obj){
       if(err){acStatus(err.message,'var(--red)');return;}
