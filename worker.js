@@ -74,13 +74,13 @@ export default {
       let aiResponse;
       try {
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI call timed out after 25 seconds. Try a shorter document.')), 25000)
+          setTimeout(() => reject(new Error('AI call timed out after 55 seconds. Try a shorter document.')), 55000)
         );
         aiResponse = await Promise.race([
-          env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+          env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 12000) },
+              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 30000) },
             ],
             max_tokens: 8000,
           }),
