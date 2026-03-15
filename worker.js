@@ -10,23 +10,69 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.4';
+const VERSION = 'v1.3.5';
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
-const SYSTEM_PROMPT = `You are a workout program converter. Your only job is to output valid JSON — no explanation, no markdown fences, nothing else.
+const SYSTEM_PROMPT = `You are being asked to convert a workout program into a JSON file for a personal workout tracking app. Follow these instructions exactly.
 
-Convert the workout program text the user provides into this exact JSON structure:
-{"id":"unique_id","name":"Program Name","desc":"Short description","weeks":[{"week":1,"phase":1,"days":[{"label":"DAY 1 — LOWER BODY","time":"~60 min","sections":[{"label":"MAIN LIFT","exercises":[{"name":"Back Squat","sets":"5 x 5 / 2 min","note":"Optional cue"}]}]},{"label":"DAY 7 — REST","rest":true,"sections":[]}]}]}
+Your Output: Return raw JSON only — no markdown code fences, no explanation, no preamble. The entire response must be parseable as JSON.
 
-Rules:
-- id: lowercase letters and underscores only, no spaces or special chars
-- phase: integer, increment every 4 weeks (use 1 for all weeks if unclear)
-- Rest days must use: {"label":"DAY X — REST","rest":true,"sections":[]}
-- sets format examples: "5 x 5 / 2 min", "3 x 12 / 60s", "4 x MAX / 90s", "continuous", "1x TABATA"
-- Section labels: short, uppercase (e.g. "MAIN LIFT", "ACCESSORY", "CONDITIONING")
-- Include ALL weeks from the program — do not truncate or summarize
-- Return ONLY valid JSON. No markdown. No explanation.`;
+Top-Level Structure:
+{"id":"unique_id","name":"Program Display Name","desc":"One-sentence description","weeks":[...]}
+- id: lowercase, no spaces, no special characters except underscores (e.g. "wendler_531", "nsuns_4day")
+- name: short human-readable name shown in the app dropdown
+- desc: one sentence describing the program (intensity, focus, style)
+- weeks: array of week objects. Only include weeks that exist in the program. Do not pad with empty weeks.
+
+Week Objects:
+{"week":1,"phase":1,"days":[...]}
+- week: sequential week number starting at 1
+- phase: training phase number if the program has named phases/blocks; if not, set phase:1 for all weeks
+- days: array of day objects. Only include days that exist in the program. Do not pad to 7 days.
+
+Day Objects — Training day:
+{"day":1,"label":"MON — UPPER","time":"~60 min","sections":[...]}
+- day: sequential day number within the week, starting at 1
+- label: format "DAY_ABBREV — FOCUS" e.g. "MON — LOWER", "WED — PUSH", "DAY 1 — UPPER"
+- time: estimated duration if provided; omit if not given (or use "~60 min" as fallback)
+- sections: array of section objects
+
+Rest day (only if explicitly scheduled in the program):
+{"day":4,"label":"THU — REST","rest":true,"sections":[]}
+
+Section Objects:
+{"label":"MAIN LIFT","exercises":[...]}
+- label: section heading in ALL CAPS e.g. "MAIN LIFT", "ACCESSORIES", "CONDITIONING", "WARM-UP"
+
+Exercise Objects:
+{"name":"Back Squat","sets":"5 x 5 / 3 min","mod":false,"subFor":"","note":""}
+- name: exercise name as written in the program
+- sets: sets/reps string with rest time appended using ONLY these exact formats: / 45s, / 60s, / 90s, / 2 min, / 3 min, / 4 min, / 5 min, / 2-3 min (range). If no rest time given, omit the rest portion entirely. Round unusual rest times to nearest option.
+- mod: always false
+- subFor: always ""
+- note: coaching note from the program, or "" if none. Use this for week-specific loading info (e.g. "Week 1: 65% 1RM").
+
+Supersets: append "(superset)" to the sets string of each exercise in the group.
+e.g. "3 x 12 / 60s (superset)"
+
+Critical rules — do not impose structure the program does not have:
+- Output exactly as many weeks as the program contains
+- Output exactly as many days per week as the program prescribes
+- If the program is a template week meant to repeat N times, output all N weeks explicitly
+- If the program rotates (Week A / Week B), output each week in sequence explicitly
+- If loading varies by week but structure is identical, put the percentage/loading in the note field, not sets
+- Include deload weeks as normal week objects
+- For 1RM test days use section label "1RM TEST" or "MAX EFFORT"
+
+Validation before responding:
+1. JSON is valid and parseable — no trailing commas, no missing brackets
+2. Every week has week number, phase number, and days array
+3. Every day has day number, label, and sections array (or rest:true and empty sections)
+4. Every exercise has name, sets, mod, subFor, and note
+5. Rest times use only the approved formats listed above
+6. id contains no spaces or special characters
+7. You have not added weeks or days that do not exist in the source program`;
 
 function corsHeaders(origin) {
   const allowed = origin === ALLOWED_ORIGIN || origin === 'http://localhost' || (origin && origin.startsWith('http://localhost:')) || (origin && origin.startsWith('http://127.'));
