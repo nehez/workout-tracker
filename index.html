@@ -15,7 +15,7 @@ html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-size:15px;display:flex;flex-direction:column;height:100dvh}
 #topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px 8px;flex-shrink:0;display:flex;flex-direction:column;gap:8px}
 #topbar-title{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);text-transform:uppercase;display:flex;justify-content:flex-start;align-items:center;gap:6px}
-#app-version{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent);opacity:.7}
+#app-version{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;letter-spacing:.15em;color:var(--accent)}
 #week-row{display:flex;align-items:center;gap:8px}
 #week-label{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:var(--text);min-width:90px}
 #phase-badge{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:11px;letter-spacing:.1em;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:2px}
@@ -332,7 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.1</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.1<span id="worker-version-display"></span></div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -397,7 +397,7 @@ var THEMES = {
   airforce:   { swatch:'#7ab0e8', vars:{'--bg':'#040810','--surface':'#080f20','--card':'#0c1630','--border':'#162040','--accent':'#7ab0e8','--green':'#2a8060','--checked-bg':'#081820','--checked-text':'#4a9a70','--checked-text-dim':'#3a8060','--text':'#d0dff0','--muted':'#5878a8','--mod':'#c45c2a','--section-bg':'#060c18','--red':'#c44'} },
   spaceforce: { swatch:'#9090d8', vars:{'--bg':'#040408','--surface':'#0a0a18','--card':'#101028','--border':'#1c1c3c','--accent':'#9090d8','--green':'#2a9090','--checked-bg':'#081818','--checked-text':'#3a9898','--checked-text-dim':'#2a7878','--text':'#d8d8f0','--muted':'#6868a8','--mod':'#c45c2a','--section-bg':'#080810','--red':'#c44'} },
   coastguard: { swatch:'#e06828', vars:{'--bg':'#040810','--surface':'#080f1c','--card':'#0c1628','--border':'#162038','--accent':'#e06828','--green':'#2a8050','--checked-bg':'#081820','--checked-text':'#4a9060','--checked-text-dim':'#3a7050','--text':'#d0dff0','--muted':'#6080a0','--mod':'#e06828','--section-bg':'#060c16','--red':'#c44'} },
-  light:      { swatch:'#f0f0f0', vars:{'--bg':'#f4f4f4','--surface':'#ffffff','--card':'#ffffff','--border':'#d8d8d8','--accent':'#b8860b','--green':'#2d6a2d','--checked-bg':'#e8f5e8','--checked-text':'#2d6a2d','--checked-text-dim':'#4a8a4a','--text':'#1a1a1a','--muted':'#666666','--mod':'#c45c2a','--section-bg':'#f0f0f0','--red':'#c00'} },
+  light:      { swatch:'#d4a017', vars:{'--bg':'#f4f4f4','--surface':'#ffffff','--card':'#ffffff','--border':'#d8d8d8','--accent':'#b8860b','--green':'#2d6a2d','--checked-bg':'#e8f5e8','--checked-text':'#2d6a2d','--checked-text-dim':'#4a8a4a','--text':'#1a1a1a','--muted':'#666666','--mod':'#c45c2a','--section-bg':'#f0f0f0','--red':'#c00'} },
 };
 function applyTheme(id){
   var t = THEMES[id] || THEMES.default;
@@ -966,6 +966,9 @@ function stopConfetti(){if(confettiId){cancelAnimationFrame(confettiId);confetti
 // ── AUTO-CONVERT: PDF/DOCX/TXT → AI Worker → Program ────────────────────
 // Set this to your deployed Cloudflare Worker URL:
 var WORKER_URL = 'https://workout-ai-converter.jason-nehez.workers.dev';
+var lastWorkerVer = null;
+try{ lastWorkerVer = localStorage.getItem('hw2_workerVer') || null; }catch(e){}
+function setWorkerVer(v){ if(!v) return; lastWorkerVer = v; try{ localStorage.setItem('hw2_workerVer', v); }catch(e){} var el=document.getElementById('worker-version-display'); if(el) el.textContent = ' · worker '+v; }
 
 function acLoadScript(src, cb){
   if(document.querySelector('script[src="'+src+'"]')){cb();return;}
@@ -1036,6 +1039,7 @@ function acCallWorker(text, cb){
   })
   .then(function(r){return r.json();})
   .then(function(data){
+    if(data._version) setWorkerVer(data._version);
     if(data.error){cb(new Error(data.error));return;}
     if(!data.result){cb(new Error('No result returned from AI.'));return;}
     cb(null, data.result);
@@ -1048,7 +1052,7 @@ function acRun(file){
   acExtractText(file, function(err, text){
     if(err){acStatus('Read error: '+err.message,'var(--red)');return;}
     if(!text||text.trim().length<30){acStatus('File appears empty or unreadable.','var(--red)');return;}
-    acStatus('Converting with AI\u2026 (20\u201340 seconds)');
+    acStatus('Converting with AI\u2026 (this may take a few minutes)');
     acCallWorker(text, function(err, obj){
       if(err){acStatus(err.message,'var(--red)');return;}
       var ve=validateProgJSON(obj);
@@ -1070,6 +1074,7 @@ function acRun(file){
 function showManage(){
   renderManageOverlay();
   renderThemePicker();
+  setWorkerVer(lastWorkerVer);
   var acBtn=document.getElementById('btn-auto-convert');
   var acFile=document.getElementById('auto-convert-file');
   if(acBtn&&acFile){

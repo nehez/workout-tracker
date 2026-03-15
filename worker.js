@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.2';
+const VERSION = 'v1.3.3';
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -76,7 +76,7 @@ export default {
       let aiResponse;
       try {
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI call timed out after 110 seconds. Try a shorter document.')), 110000)
+          setTimeout(() => reject(new Error('AI call timed out after 5 minutes. Try a shorter document.')), 300000)
         );
         aiResponse = await Promise.race([
           env.AI.run(MODEL, {
