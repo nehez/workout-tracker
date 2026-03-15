@@ -82,7 +82,8 @@ export default {
               { role: 'system', content: SYSTEM_PROMPT },
               { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 30000) },
             ],
-            max_tokens: 8000,
+            max_tokens: 16000,
+            response_format: { type: 'json_object' },
           }),
           timeout,
         ]);
