@@ -10,16 +10,17 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.9';
+const VERSION = 'v1.4.0';
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
 const SYSTEM_PROMPT = `You are being asked to convert a workout program into a JSON file for a personal workout tracking app. Follow these instructions exactly.
 
-CRITICAL — READ BEFORE STARTING:
-- If the program shows one "template week" meant to repeat (e.g. "do this for 8 weeks"), you MUST output ALL weeks as separate week objects (week 1 through 8). Never output just one week for a multi-week program.
-- If the program rotates (Week A / Week B over N weeks), output every week in sequence explicitly.
-- Count the total number of weeks the program prescribes and verify your output has exactly that many week objects before finishing.
+CRITICAL — Week expansion rules:
+- If the program shows one "template week" that simply repeats N times with identical structure (same exercises, sets, reps): output ONLY that one week object in the weeks array, and set "totalWeeks": N at the top level. The app will expand it automatically. Do NOT repeat identical week objects.
+- If the program rotates two (or more) distinct week patterns (e.g. Week A / Week B alternating): output only those unique week objects once each (week 1, week 2, etc.) and set "totalWeeks": N for the full program length. The app will cycle through them.
+- If each week genuinely differs (different loading, different exercises week by week): output all weeks explicitly and omit "totalWeeks".
+- Loading that changes week to week but structure is identical counts as "template repeat" — put the per-week loading in the "note" field of each exercise in the template week (e.g. "Week 1: 65%, Week 2: 70%, Week 3: 75%"). Set totalWeeks accordingly.
 
 Your Output: Return raw JSON only — no markdown code fences, no explanation, no preamble, no whitespace between tokens. Output must be a single compact line with no newlines or extra spaces. The entire response must be parseable as JSON.
 
@@ -62,12 +63,10 @@ Supersets: append "(superset)" to the sets string of each exercise in the group.
 e.g. "3 x 12 / 60s (superset)"
 
 Critical rules — do not impose structure the program does not have:
-- Output exactly as many weeks as the program contains
 - Output exactly as many days per week as the program prescribes
-- If the program is a template week meant to repeat N times, output all N weeks explicitly
-- If the program rotates (Week A / Week B), output each week in sequence explicitly
-- If loading varies by week but structure is identical, put the percentage/loading in the note field, not sets
-- Include deload weeks as normal week objects
+- For template/rotating programs use totalWeeks + unique week template(s) only — never repeat identical week objects
+- If loading varies by week but structure is identical, put ALL per-week loading in the note field of the template week
+- Include deload weeks — if a deload is a unique structure output it explicitly; if it repeats a pattern reference it via totalWeeks
 - For 1RM test days use section label "1RM TEST" or "MAX EFFORT"
 
 Validation before responding:
@@ -77,7 +76,8 @@ Validation before responding:
 4. Every exercise has name, sets, mod, subFor, and note
 5. Rest times use only the approved formats listed above
 6. id contains no spaces or special characters
-7. You have not added weeks or days that do not exist in the source program`;
+7. You have not added weeks or days that do not exist in the source program
+8. If you used totalWeeks, confirm weeks array contains only the unique template week(s) and totalWeeks >= weeks.length`;
 
 function corsHeaders(origin) {
   const allowed = origin === ALLOWED_ORIGIN || origin === 'http://localhost' || (origin && origin.startsWith('http://localhost:')) || (origin && origin.startsWith('http://127.'));
@@ -165,6 +165,18 @@ export default {
         } catch (e) {
           return json({ error: 'AI returned malformed JSON — the output may have been truncated. Try a shorter document.' }, 502, origin);
         }
+      }
+
+      // Expand template weeks: if AI returned totalWeeks + fewer week objects, cycle through templates
+      if (parsed.totalWeeks && Array.isArray(parsed.weeks) && parsed.totalWeeks > parsed.weeks.length) {
+        const templates = parsed.weeks;
+        const expanded = [];
+        for (let i = 0; i < parsed.totalWeeks; i++) {
+          const tpl = templates[i % templates.length];
+          expanded.push({ ...tpl, week: i + 1 });
+        }
+        parsed.weeks = expanded;
+        delete parsed.totalWeeks;
       }
 
       return json({ result: parsed }, 200, origin);
