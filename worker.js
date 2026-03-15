@@ -10,11 +10,16 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.5';
+const VERSION = 'v1.3.6';
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
 const SYSTEM_PROMPT = `You are being asked to convert a workout program into a JSON file for a personal workout tracking app. Follow these instructions exactly.
+
+CRITICAL — READ BEFORE STARTING:
+- If the program shows one "template week" meant to repeat (e.g. "do this for 8 weeks"), you MUST output ALL weeks as separate week objects (week 1 through 8). Never output just one week for a multi-week program.
+- If the program rotates (Week A / Week B over N weeks), output every week in sequence explicitly.
+- Count the total number of weeks the program prescribes and verify your output has exactly that many week objects before finishing.
 
 Your Output: Return raw JSON only — no markdown code fences, no explanation, no preamble. The entire response must be parseable as JSON.
 
@@ -130,9 +135,9 @@ export default {
           env.AI.run(MODEL, {
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
-              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 30000) },
+              { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 20000) },
             ],
-            max_tokens: 8000,
+            max_tokens: 6000,
           }),
           timeout,
         ]);
