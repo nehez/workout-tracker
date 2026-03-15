@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.4.0';
+const VERSION = 'v1.4.1';
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -163,7 +163,11 @@ export default {
         try {
           parsed = JSON.parse(jsonStr);
         } catch (e) {
-          return json({ error: 'AI returned malformed JSON — the output may have been truncated. Try a shorter document.' }, 502, origin);
+          const len = jsonStr.length;
+          const tail = jsonStr.slice(-120).replace(/\n/g, '\\n');
+          return json({
+            error: `AI returned malformed JSON — parse error: ${e.message}. Output length: ${len} chars. Last 120 chars: …${tail}`,
+          }, 502, origin);
         }
       }
 
