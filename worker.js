@@ -10,6 +10,8 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
+const VERSION = 'v1.3.0';
+const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
 const SYSTEM_PROMPT = `You are a workout program converter. Your only job is to output valid JSON — no explanation, no markdown fences, nothing else.
@@ -36,7 +38,7 @@ function corsHeaders(origin) {
 }
 
 function json(body, status, origin) {
-  return new Response(JSON.stringify(body), {
+  return new Response(JSON.stringify({ ...body, _version: VERSION, _model: MODEL }), {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
   });
@@ -74,10 +76,10 @@ export default {
       let aiResponse;
       try {
         const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('AI call timed out after 55 seconds. Try a shorter document.')), 55000)
+          setTimeout(() => reject(new Error('AI call timed out after 110 seconds. Try a shorter document.')), 110000)
         );
         aiResponse = await Promise.race([
-          env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+          env.AI.run(MODEL, {
             messages: [
               { role: 'system', content: SYSTEM_PROMPT },
               { role: 'user', content: 'Convert this workout program to JSON:\n\n' + text.slice(0, 30000) },
