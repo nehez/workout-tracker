@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.3.0';
+const VERSION = 'v1.3.1';
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -97,14 +97,17 @@ export default {
         return json({ error: 'No response from AI model.' }, 502, origin);
       }
 
-      // Strip markdown fences if the model added them despite instructions
-      const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-
+      // Some models return an already-parsed object; others return a string
       let parsed;
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch (e) {
-        return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
+      if (typeof raw === 'object') {
+        parsed = raw;
+      } else {
+        const cleaned = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch (e) {
+          return json({ error: 'AI returned malformed JSON. Try a cleaner source document.' }, 502, origin);
+        }
       }
 
       return json({ result: parsed }, 200, origin);
