@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.4.2';
+const VERSION = 'v1.4.3';
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -78,6 +78,29 @@ Validation before responding:
 6. id contains no spaces or special characters
 7. You have not added weeks or days that do not exist in the source program
 8. If you used totalWeeks, confirm weeks array contains only the unique template week(s) and totalWeeks >= weeks.length`;
+
+// Fix known model mistake: missing ] closing the days array at week boundaries.
+// Model outputs:  ...,"sections":[]}},{"week":2,...
+// Should be:      ...,"sections":[]}]},{"week":2,...
+function patchMissingDaysClose(s) {
+  return s.replace(/\}\},\{"week":/g, '}]},{"week":');
+}
+
+// Append any missing closing brackets/braces so truncated JSON can parse.
+function closeOpenBrackets(str) {
+  const stack = [];
+  let inStr = false, esc = false;
+  for (const ch of str) {
+    if (esc) { esc = false; continue; }
+    if (ch === '\\' && inStr) { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  return str + stack.reverse().join('');
+}
 
 function corsHeaders(origin) {
   const allowed = origin === ALLOWED_ORIGIN || origin === 'http://localhost' || (origin && origin.startsWith('http://localhost:')) || (origin && origin.startsWith('http://127.'));
@@ -160,17 +183,29 @@ export default {
         const jStart = cleaned.indexOf('{');
         const jEnd = cleaned.lastIndexOf('}');
         const jsonStr = jStart !== -1 && jEnd > jStart ? cleaned.slice(jStart, jEnd + 1) : cleaned;
-        try {
-          parsed = JSON.parse(jsonStr);
-        } catch (e) {
+        // Attempt 1: raw parse
+        let parseErr;
+        try { parsed = JSON.parse(jsonStr); } catch (e) { parseErr = e; }
+
+        // Attempt 2: patch missing ] at week boundaries, then re-parse
+        if (!parsed) {
+          try { parsed = JSON.parse(patchMissingDaysClose(jsonStr)); parseErr = null; } catch (e) { parseErr = e; }
+        }
+
+        // Attempt 3: close any remaining open brackets (handles actual truncation)
+        if (!parsed) {
+          try { parsed = JSON.parse(closeOpenBrackets(patchMissingDaysClose(jsonStr))); parseErr = null; } catch (e) { parseErr = e; }
+        }
+
+        if (!parsed) {
           const len = jsonStr.length;
-          const pos = parseInt(e.message.match(/position (\d+)/)?.[1] ?? '-1');
+          const pos = parseInt(parseErr.message.match(/position (\d+)/)?.[1] ?? '-1');
           const snippet = pos >= 0
             ? jsonStr.slice(Math.max(0, pos - 80), pos + 80).replace(/\n/g, '\\n')
             : jsonStr.slice(-120).replace(/\n/g, '\\n');
           const label = pos >= 0 ? `chars ${Math.max(0, pos - 80)}–${pos + 80}` : 'last 120 chars';
           return json({
-            error: `AI returned malformed JSON — ${e.message}. Output: ${len} chars. Context (${label}): …${snippet}…`,
+            error: `AI returned malformed JSON — ${parseErr.message}. Output: ${len} chars. Context (${label}): …${snippet}…`,
           }, 502, origin);
         }
       }
