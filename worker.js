@@ -10,7 +10,7 @@
 // Requires an AI binding named "AI":
 //   Dashboard → Worker → Settings → Bindings → Add binding → Workers AI → name it "AI"
 
-const VERSION = 'v1.4.1';
+const VERSION = 'v1.4.2';
 const MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const ALLOWED_ORIGIN = 'https://nehez.github.io';
 
@@ -164,9 +164,13 @@ export default {
           parsed = JSON.parse(jsonStr);
         } catch (e) {
           const len = jsonStr.length;
-          const tail = jsonStr.slice(-120).replace(/\n/g, '\\n');
+          const pos = parseInt(e.message.match(/position (\d+)/)?.[1] ?? '-1');
+          const snippet = pos >= 0
+            ? jsonStr.slice(Math.max(0, pos - 80), pos + 80).replace(/\n/g, '\\n')
+            : jsonStr.slice(-120).replace(/\n/g, '\\n');
+          const label = pos >= 0 ? `chars ${Math.max(0, pos - 80)}–${pos + 80}` : 'last 120 chars';
           return json({
-            error: `AI returned malformed JSON — parse error: ${e.message}. Output length: ${len} chars. Last 120 chars: …${tail}`,
+            error: `AI returned malformed JSON — ${e.message}. Output: ${len} chars. Context (${label}): …${snippet}…`,
           }, 502, origin);
         }
       }
