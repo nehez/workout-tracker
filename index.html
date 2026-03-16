@@ -231,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.1</span></div>
+  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.2</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -332,7 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.1<span id="worker-version-display"></span></div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.2<span id="worker-version-display"></span></div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -706,9 +706,12 @@ function renderTabs(){
   for(var di=0;di<week.days.length;di++){
     var day=week.days[di];
     var allDone=false,total=0,done=0;
-    for(var si=0;si<day.sections.length;si++)
-      for(var ei=0;ei<day.sections[si].exercises.length;ei++){total++;if(isChecked(state,curWeek,di,si,ei))done++;}
-    allDone=total>0&&done===total;
+    if(day.rest){allDone=isChecked(state,curWeek,di,0,0);}
+    else{
+      for(var si=0;si<day.sections.length;si++)
+        for(var ei=0;ei<day.sections[si].exercises.length;ei++){total++;if(isChecked(state,curWeek,di,si,ei))done++;}
+      allDone=total>0&&done===total;
+    }
     var tabLabel=DAY_SHORT[di]||('D'+(di+1));
     if(day.label){var parts=day.label.split('\u2014');tabLabel=(parts[0]||('D'+(di+1))).trim();}
     html+='<div class="day-tab'+(di===curDay?' active':'')+(allDone?' all-done':'')+'" data-day="'+di+'">'+tabLabel+'<span class="done-dot"></span></div>';
