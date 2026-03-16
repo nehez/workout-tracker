@@ -231,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.2</span></div>
+  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.3</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -332,7 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;">v3.2<span id="worker-version-display"></span></div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;display:flex;align-items:center;gap:10px;">v3.3<span id="worker-version-display"></span><button onclick="location.reload()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;padding:2px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">↻ REFRESH</button></div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -450,51 +450,63 @@ function fetchAndCacheProg(id, ver, cb){
     })
     .catch(function(e){ if(cb) cb(e); });
 }
+function showUpdateBanner(){
+  if(document.getElementById('update-banner')) return;
+  var b=document.createElement('div');
+  b.id='update-banner';
+  b.style.cssText='position:fixed;bottom:56px;left:0;right:0;background:var(--accent);color:#000;font-family:"Barlow Condensed",sans-serif;font-weight:700;font-size:13px;letter-spacing:.1em;text-align:center;padding:9px;z-index:100;cursor:pointer;text-transform:uppercase';
+  b.textContent='UPDATE AVAILABLE — TAP TO RELOAD';
+  b.addEventListener('click',function(){ location.reload(); });
+  document.body.appendChild(b);
+}
+
 function loadAllBuiltins(onAllDone){
-  // Manifest is the single source of truth.
-  // Any key in manifest.json (excluding _name/_desc keys) is a program to load.
-  // Adding a new program in the future requires only manifest.json + a JSON file — no code changes.
-  fetchManifest(function(err, manifest){
-    if(err || !manifest){
-      // No manifest available — fall back to whatever is already in localStorage cache
-      var cachedKeys = [];
-      try{
-        for(var i=0;i<localStorage.length;i++){
-          var k=localStorage.key(i);
-          if(k && k.indexOf(PROG_CACHE_PREFIX)===0) cachedKeys.push(k.slice(PROG_CACHE_PREFIX.length));
-        }
-      }catch(e){}
-      if(cachedKeys.length === 0){ onAllDone(); return; }
-      cachedKeys.forEach(function(id){
-        var cached = getCachedProg(id);
-        if(cached){ PROGRAMS[id]=cached; if(!PROGRAM_META[id]) PROGRAM_META[id]={name:id,desc:''}; }
-      });
-      onAllDone();
-      return;
+  // Cache-first: collect all cached program IDs from localStorage
+  var cacheIds=[];
+  try{
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf(PROG_CACHE_PREFIX)===0) cacheIds.push(k.slice(PROG_CACHE_PREFIX.length));
     }
-    var keys = Object.keys(manifest).filter(function(k){ return k.indexOf('_name')===-1 && k.indexOf('_desc')===-1; });
-    if(keys.length === 0){ onAllDone(); return; }
-    var pending = keys.length;
-    function done(){ pending--; if(pending<=0) onAllDone(); }
-    keys.forEach(function(id){
-      var cached = getCachedProg(id);
-      var cachedVer = getCachedVer(id);
-      var manifestVer = manifest[id];
-      // Register display name/desc from manifest if not already hardcoded
-      if(!PROGRAM_META[id]) PROGRAM_META[id] = {name: manifest[id+'_name']||id, desc: manifest[id+'_desc']||''};
-      if(cached && cachedVer === manifestVer){
-        // Cache is current — use it, no network request
-        PROGRAMS[id] = cached;
-        done();
-      } else {
-        // Stale or never cached — fetch fresh
-        fetchAndCacheProg(id, manifestVer, function(ferr){
-          if(ferr && cached){ PROGRAMS[id] = cached; } // fetch failed but cache exists, use it
-          done();
-        });
-      }
+  }catch(e){}
+
+  if(cacheIds.length>0){
+    // Init from cache immediately — no loading overlay, timer stays visible
+    cacheIds.forEach(function(id){
+      var cached=getCachedProg(id);
+      if(cached){ PROGRAMS[id]=cached; if(!PROGRAM_META[id]) PROGRAM_META[id]={name:id,desc:''}; }
     });
-  });
+    onAllDone();
+    // Background update check (silent — no overlay)
+    fetchManifest(function(err,manifest){
+      if(err||!manifest) return;
+      var keys=Object.keys(manifest).filter(function(k){ return k.indexOf('_name')===-1&&k.indexOf('_desc')===-1; });
+      var updateCount=0;
+      keys.forEach(function(id){
+        if(!PROGRAM_META[id]) PROGRAM_META[id]={name:manifest[id+'_name']||id,desc:manifest[id+'_desc']||''};
+        if(getCachedVer(id)!==manifest[id]){
+          updateCount++;
+          fetchAndCacheProg(id,manifest[id],function(){ updateCount--; if(updateCount===0) showUpdateBanner(); });
+        }
+      });
+    });
+  } else {
+    // First visit or cache cleared: show overlay and fetch everything
+    showLoadingOverlay('LOADING PROGRAMS...');
+    fetchManifest(function(err,manifest){
+      if(err||!manifest){ hideLoadingOverlay(); onAllDone(); return; }
+      var keys=Object.keys(manifest).filter(function(k){ return k.indexOf('_name')===-1&&k.indexOf('_desc')===-1; });
+      if(keys.length===0){ hideLoadingOverlay(); onAllDone(); return; }
+      var pending=keys.length;
+      function done(){ pending--; if(pending<=0){ hideLoadingOverlay(); onAllDone(); } }
+      keys.forEach(function(id){
+        if(!PROGRAM_META[id]) PROGRAM_META[id]={name:manifest[id+'_name']||id,desc:manifest[id+'_desc']||''};
+        var cached=getCachedProg(id); var cachedVer=getCachedVer(id);
+        if(cached&&cachedVer===manifest[id]){ PROGRAMS[id]=cached; done(); }
+        else{ fetchAndCacheProg(id,manifest[id],function(ferr){ if(ferr&&cached) PROGRAMS[id]=cached; done(); }); }
+      });
+    });
+  }
 }
 function showLoadingOverlay(msg){
   var el = document.getElementById('prog-loading-overlay');
@@ -942,12 +954,15 @@ function adjustTimer(delta){
   timerTotal=Math.max(timerTotal,timerRemain);
   updateTimerUI();
 }
-// Catch up timer when returning from background
+// Catch up timer when returning from background; save state when hiding
 document.addEventListener('visibilitychange',function(){
-  if(!document.hidden&&timerEndTime&&timerInterval){
+  if(document.hidden){
+    saveWTState();
+  } else if(timerEndTime&&timerInterval){
     timerTick(); // immediately sync to real time on return
   }
 });
+window.addEventListener('pagehide',function(){ saveWTState(); });
 
 // CONFETTI
 var confettiId=null,COLORS=['#d4a017','#ffffff','#2d6a2d','#c45c2a','#4a90d9','#e8e4dc'];
@@ -1513,6 +1528,10 @@ function renderDay(){
     html+='<div class="ex-left ex-info"><div class="ex-name-wrap"><span class="ex-name">Rest / Stretch</span></div>';
     html+='<div class="ex-sets">mobility, stretching, sleep</div></div></div>';
     document.getElementById('workout').innerHTML=html;
+    // Bind timer button and sync display for rest days too
+    var wtBtnEl=document.getElementById('wt-btn');
+    if(wtBtnEl) wtBtnEl.addEventListener('click',function(e){e.stopPropagation();wtToggle();});
+    wtUpdateDisplay();
     return;
   }
 
