@@ -828,6 +828,7 @@ function finishWorkout(){
   var wtFinalTime=wtElapsed();
   wtCommit();
   if(PROGRAM[curWeek].days[curDay] && PROGRAM[curWeek].days[curDay].rest){
+    var rState=loadState();setCheck(rState,curWeek,curDay,0,0,true);saveState(rState);renderDay();renderTabs();
     document.getElementById('cel-icon').textContent='💤';
     document.getElementById('cel-sub').textContent='REST DAY DONE. RECOVERY IS TRAINING.';
     document.getElementById('cel-stats').innerHTML='<div class="stat-row"><span class="stat-label">Week</span><span class="stat-val">'+(curWeek+1)+' of '+PROGRAM.length+'</span></div><div class="stat-row"><span class="stat-label">Phase</span><span class="stat-val">'+phaseName(PROGRAM[curWeek].phase||1)+'</span></div><div class="stat-row"><span class="stat-label">Day</span><span class="stat-val">REST + RECOVERY</span></div>'+(wtFinalTime!=='0:00'?'<div class="stat-row"><span class="stat-label">Time</span><span class="stat-val">'+wtFinalTime+'</span></div>':'');
