@@ -231,7 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 
 
 <div id="topbar">
-  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.3</span></div>
+  <div id="topbar-title">WORKOUT TRACKER <span id="app-version">v3.4</span></div>
   <div id="week-row">
     <button class="week-btn" id="btn-prev-week">&#8249;</button>
     <div id="week-label">WEEK 1</div><span id="current-dot" style="display:none;width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0" title="Your current week"></span>
@@ -332,7 +332,7 @@ body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font
 <div id="manage-overlay">
   <div id="manage-box">
     <h2>FILES</h2>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;display:flex;align-items:center;gap:10px;">v3.3<span id="worker-version-display"></span><button onclick="location.reload()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;padding:2px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">↻ REFRESH</button></div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:16px;display:flex;align-items:center;gap:10px;">v3.4<span id="worker-version-display"></span><button onclick="location.reload()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-size:11px;padding:2px 8px;border-radius:3px;cursor:pointer;letter-spacing:.04em;">↻ REFRESH</button></div>
 
     <!-- THEME -->
     <div class="manage-section">
@@ -1308,10 +1308,29 @@ function wtCommit(){
   wtReset(); // always reset regardless of duration
 }
 
-// Tick every second while running
+// Tick every second — self-healing: if wt.running is false but localStorage
+// still has a running state (e.g. BFCache restore, missed init), restore it
 setInterval(function(){
-  if(wt.running) wtUpdateDisplay();
-}, 1000);
+  if(wt.running){
+    wtUpdateDisplay();
+  } else {
+    try{
+      var _s=JSON.parse(localStorage.getItem(WT_STATE_KEY)||'null');
+      if(_s&&_s.running&&_s.startedAt){
+        wt.accumulated=_s.accumulated||0;
+        wt.startedAt=_s.startedAt;
+        wt.running=true;
+        wt.dayIdx=_s.dayIdx;
+        wtUpdateDisplay();
+      }
+    }catch(e){}
+  }
+},1000);
+
+// BFCache restore: page shown from memory — refresh timer display immediately
+window.addEventListener('pageshow',function(e){
+  if(e.persisted){ restoreWTState(); wtUpdateDisplay(); }
+});
 
 function switchProgram(id){
   if(id === curProgId) return;
